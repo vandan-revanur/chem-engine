@@ -1,0 +1,32 @@
+#IDE
+.idea
+
+# Rust
+target/
+Cargo.lock
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+# macOS
+.DS_Store
+
+# Generated extension modules
+chem_engine/_rust*.so
+chem_engine/_rust*.pyd
+chem_engine/_rust*.dylib
+
+# Build artifacts
+build/
+dist/
+*.egg-info/*.iml
+
+docs/specs
+
+

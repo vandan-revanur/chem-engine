@@ -7,8 +7,12 @@ on:
 
 jobs:
   # ── Job 1: lint (fast — blocks everything else if it fails) ──────────────────
+  # Runs pre-commit hooks directly so CI uses the exact same ruff version and
+  # config as local development — no drift between the two.
+  # SKIP the pytest hooks (testmon/xdist): those need the compiled Rust
+  # extension and run in the dedicated test job instead.
   lint:
-    name: Lint & type-check
+    name: Lint & format (pre-commit)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,12 +22,11 @@ jobs:
           version: "latest"
           python-version: "3.11"
 
-      - name: Install dev tools
+      - name: Install dev dependencies (includes pre-commit)
         run: uv sync
 
-      - run: uv run ruff check .
-      - run: uv run ruff format --check .
-      - run: uv run mypy chem_engine/ --ignore-missing-imports
+      - name: Run pre-commit hooks
+        run: SKIP=pytest-testmon,pytest-xdist-full uv run pre-commit run --all-files
 
   # ── Job 2: build Rust extension + run tests ──────────────────────────────────
   test:

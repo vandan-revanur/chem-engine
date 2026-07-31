@@ -44,7 +44,7 @@ repos:
       - id: pytest-testmon
         name: "pytest-testmon: run only affected tests"
         language: system
-        entry: .venv/bin/pytest tests/ --testmon --ignore=tests/test_correctness_vs_rdkit.py
+        entry: uv run pytest tests/ --testmon --ignore=tests/test_correctness_vs_rdkit.py
         pass_filenames: false
         types: [python]
         stages: [pre-commit]
@@ -52,9 +52,7 @@ repos:
       - id: pytest-xdist-full
         name: "pytest-xdist: full test suite in parallel (pre-push)"
         language: system
-        entry: .venv/bin/pytest tests/ -n auto --ignore=tests/test_correctness_vs_rdkit.py
+        entry: uv run pytest tests/ -n auto --ignore=tests/test_correctness_vs_rdkit.py
         pass_filenames: false
         types: [python]
         stages: [pre-push]
-
-

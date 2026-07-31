@@ -16,46 +16,48 @@ Reference molecules:
   • Aniline           Nc1ccccc1                         MW 93.13
   • Imidazole         c1cn[nH]c1  (or c1cnc[nH]1)      MW 68.08
 """
-import math
-import pytest
+
 import chem_engine as ro
+
 # ─── molecule registry ──────────────────────────────────────────────────────
 MOLS = {
-    "aspirin":      "CC(=O)Oc1ccccc1C(=O)O",
-    "paracetamol":  "CC(=O)Nc1ccc(O)cc1",
-    "ibuprofen":    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
-    "caffeine":     "Cn1cnc2c1c(=O)n(C)c(=O)n2C",
-    "dopamine":     "NCCc1ccc(O)c(O)c1",
+    "aspirin": "CC(=O)Oc1ccccc1C(=O)O",
+    "paracetamol": "CC(=O)Nc1ccc(O)cc1",
+    "ibuprofen": "CC(C)Cc1ccc(cc1)C(C)C(=O)O",
+    "caffeine": "Cn1cnc2c1c(=O)n(C)c(=O)n2C",
+    "dopamine": "NCCc1ccc(O)c(O)c1",
     "benzoic_acid": "OC(=O)c1ccccc1",
-    "naphthalene":  "c1ccc2ccccc2c1",
-    "aniline":      "Nc1ccccc1",
-    "benzene":      "c1ccccc1",
-    "pyridine":     "c1ccncc1",
-    "imidazole":    "c1cnc[nH]1",
-    "ethanol":      "CCO",
-    "propan1ol":    "CCCO",
-    "butane":       "CCCC",
-    "pentane":      "CCCCC",
-    "hexane":       "CCCCCC",
-    "cyclohexane":  "C1CCCCC1",
-    "toluene":      "Cc1ccccc1",
-    "phenol":       "Oc1ccccc1",
-    "acetone":      "CC(=O)C",
-    "acetic_acid":  "CC(=O)O",
-    "ethylamine":   "CCN",
-    "dimethylamine":"CNC",
-    "trimethylamine":"CN(C)C",
+    "naphthalene": "c1ccc2ccccc2c1",
+    "aniline": "Nc1ccccc1",
+    "benzene": "c1ccccc1",
+    "pyridine": "c1ccncc1",
+    "imidazole": "c1cnc[nH]1",
+    "ethanol": "CCO",
+    "propan1ol": "CCCO",
+    "butane": "CCCC",
+    "pentane": "CCCCC",
+    "hexane": "CCCCCC",
+    "cyclohexane": "C1CCCCC1",
+    "toluene": "Cc1ccccc1",
+    "phenol": "Oc1ccccc1",
+    "acetone": "CC(=O)C",
+    "acetic_acid": "CC(=O)O",
+    "ethylamine": "CCN",
+    "dimethylamine": "CNC",
+    "trimethylamine": "CN(C)C",
     "formaldehyde": "C=O",
-    "furan":        "c1ccoc1",
-    "thiophene":    "c1ccsc1",
-    "pyrrole":      "c1cc[nH]c1",
+    "furan": "c1ccoc1",
+    "thiophene": "c1ccsc1",
+    "pyrrole": "c1cc[nH]c1",
 }
+
 
 def parse(name: str) -> ro.RustMolecule:
     return ro.parse_smiles(MOLS[name])
 
 
 # ─── SMILES parsing - heavy-atom counts ─────────────────────────────────────
+
 
 class TestAtomCounts:
     """Verify heavy atom and bond counts for reference molecules."""
@@ -83,8 +85,7 @@ class TestAtomCounts:
 
     def test_pyridine_1_nitrogen(self):
         m = parse("pyridine")
-        n_count = sum(1 for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 7)
+        n_count = sum(1 for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 7)
         assert n_count == 1
 
     def test_aniline_7_atoms(self):
@@ -140,44 +141,37 @@ class TestAtomTypes:
 
     def test_aspirin_carbon_count(self):
         m = parse("aspirin")
-        c_count = sum(1 for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 6)
+        c_count = sum(1 for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 6)
         assert c_count == 9
 
     def test_aspirin_oxygen_count(self):
         m = parse("aspirin")
-        o_count = sum(1 for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 8)
+        o_count = sum(1 for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 8)
         assert o_count == 4
 
     def test_caffeine_nitrogen_count(self):
         m = parse("caffeine")
-        n_count = sum(1 for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 7)
+        n_count = sum(1 for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 7)
         assert n_count == 4
 
     def test_caffeine_oxygen_count(self):
         m = parse("caffeine")
-        o_count = sum(1 for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 8)
+        o_count = sum(1 for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 8)
         assert o_count == 2
 
     def test_thiophene_has_sulfur(self):
         m = parse("thiophene")
-        s_count = sum(1 for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 16)
+        s_count = sum(1 for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 16)
         assert s_count == 1
 
     def test_pyrrole_has_nitrogen(self):
         m = parse("pyrrole")
-        n_count = sum(1 for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 7)
+        n_count = sum(1 for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 7)
         assert n_count == 1
 
     def test_furan_has_oxygen(self):
         m = parse("furan")
-        o_count = sum(1 for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 8)
+        o_count = sum(1 for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 8)
         assert o_count == 1
 
     def test_benzene_all_aromatic(self):
@@ -199,8 +193,7 @@ class TestAtomTypes:
     def test_aniline_nitrogen_not_aromatic(self):
         """Aniline's NH2 nitrogen is exocyclic and not aromatic."""
         m = parse("aniline")
-        n_atoms = [m.get_atom(i) for i in range(m.num_atoms)
-                   if m.get_atom(i).atomic_number == 7]
+        n_atoms = [m.get_atom(i) for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 7]
         assert len(n_atoms) == 1
         assert not n_atoms[0].is_aromatic
 
@@ -354,39 +347,57 @@ class TestBondTypes:
 
     def test_formaldehyde_double_bond(self):
         m = ro.parse_smiles("C=O")
-        double_bonds = [m.get_bond(i) for i in range(m.num_bonds)
-                        if m.get_bond(i).bond_type == ro.BondType.Double]
+        double_bonds = [
+            m.get_bond(i)
+            for i in range(m.num_bonds)
+            if m.get_bond(i).bond_type == ro.BondType.Double
+        ]
         assert len(double_bonds) == 1
 
     def test_acetonitrile_triple_bond(self):
         m = ro.parse_smiles("CC#N")
-        triple_bonds = [m.get_bond(i) for i in range(m.num_bonds)
-                        if m.get_bond(i).bond_type == ro.BondType.Triple]
+        triple_bonds = [
+            m.get_bond(i)
+            for i in range(m.num_bonds)
+            if m.get_bond(i).bond_type == ro.BondType.Triple
+        ]
         assert len(triple_bonds) == 1
 
     def test_butadiene_two_double_bonds(self):
         m = ro.parse_smiles("C=CC=C")
-        double_bonds = [m.get_bond(i) for i in range(m.num_bonds)
-                        if m.get_bond(i).bond_type == ro.BondType.Double]
+        double_bonds = [
+            m.get_bond(i)
+            for i in range(m.num_bonds)
+            if m.get_bond(i).bond_type == ro.BondType.Double
+        ]
         assert len(double_bonds) == 2
 
     def test_carboxyl_double_bond(self):
         m = ro.parse_smiles("CC(=O)O")  # acetic acid
-        double_bonds = [m.get_bond(i) for i in range(m.num_bonds)
-                        if m.get_bond(i).bond_type == ro.BondType.Double]
+        double_bonds = [
+            m.get_bond(i)
+            for i in range(m.num_bonds)
+            if m.get_bond(i).bond_type == ro.BondType.Double
+        ]
         assert len(double_bonds) == 1
 
     def test_benzene_aromatic_bonds(self):
         """chem-engine now correctly stores aromatic-ring bonds as BondType.Aromatic."""
         m = parse("benzene")
-        aromatic_bonds = [m.get_bond(i) for i in range(m.num_bonds)
-                          if m.get_bond(i).bond_type == ro.BondType.Aromatic]
+        aromatic_bonds = [
+            m.get_bond(i)
+            for i in range(m.num_bonds)
+            if m.get_bond(i).bond_type == ro.BondType.Aromatic
+        ]
         assert len(aromatic_bonds) == 6
 
     def test_pyridine_aromatic_bonds(self):
         m = parse("pyridine")
-        aromatic_bonds = [m.get_bond(i) for i in range(m.num_bonds)
-                          if m.get_bond(i).bond_type == ro.BondType.Aromatic]
+        aromatic_bonds = [
+            m.get_bond(i)
+            for i in range(m.num_bonds)
+            if m.get_bond(i).bond_type == ro.BondType.Aromatic
+        ]
         assert len(aromatic_bonds) == 6
 
 
@@ -407,29 +418,23 @@ class TestCanonicalSmiles:
             orig = ro.parse_smiles(smi)
             can = ro.canonicalize(orig)
             round_trip = ro.parse_smiles(can)
-            assert round_trip.num_atoms == orig.num_atoms, \
+            assert round_trip.num_atoms == orig.num_atoms, (
                 f"Atom count mismatch for {name}: {orig.num_atoms} → {round_trip.num_atoms}"
+            )
 
     def test_canonical_bond_count_preserved(self):
         for name, smi in MOLS.items():
             orig = ro.parse_smiles(smi)
             can = ro.canonicalize(orig)
             round_trip = ro.parse_smiles(can)
-            assert round_trip.num_bonds == orig.num_bonds, \
-                f"Bond count mismatch for {name}"
+            assert round_trip.num_bonds == orig.num_bonds, f"Bond count mismatch for {name}"
 
     def test_canonical_benzene_toluene_differ(self):
         c_benz = ro.canonicalize(parse("benzene"))
-        c_tol  = ro.canonicalize(parse("toluene"))
+        c_tol = ro.canonicalize(parse("toluene"))
         assert c_benz != c_tol
 
     def test_canonical_ethanol_propanol_differ(self):
         c1 = ro.canonicalize(parse("ethanol"))
         c2 = ro.canonicalize(parse("propan1ol"))
         assert c1 != c2
-
-
-
-
-
-

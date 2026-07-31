@@ -13,17 +13,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
+          version: "latest"
           python-version: "3.11"
 
       - name: Install dev tools
-        run: pip install ruff mypy
+        run: uv sync
 
-      - run: ruff check .
-      - run: ruff format --check .
-      - run: mypy chem_engine/ --ignore-missing-imports
+      - run: uv run ruff check .
+      - run: uv run ruff format --check .
+      - run: uv run mypy chem_engine/ --ignore-missing-imports
 
   # ── Job 2: build Rust extension + run tests ──────────────────────────────────
   test:
@@ -36,20 +36,20 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
+          version: "latest"
           python-version: "3.11"
 
-      - name: Install maturin and dev dependencies
-        run: pip install maturin pytest pytest-cov pytest-xdist
+      - name: Install dev dependencies
+        run: uv sync
 
       - name: Build Rust extension (in-place)
-        run: maturin develop --release
+        run: uv run maturin develop --release
 
       - name: Run tests in parallel with coverage
         run: >
-          pytest tests/
+          uv run pytest tests/
           -n auto
           --tb=short
           -q
@@ -70,17 +70,18 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: astral-sh/setup-uv@v6
         with:
+          version: "latest"
           python-version: "3.11"
 
-      - name: Install maturin, RDKit and test deps
-        run: pip install maturin rdkit pytest pytest-xdist
+      - name: Install dev dependencies + RDKit
+        run: uv sync && uv pip install rdkit
 
       - name: Build Rust extension
-        run: maturin develop --release
+        run: uv run maturin develop --release
 
       - name: Run RDKit cross-validation tests
-        run: pytest tests/test_correctness_vs_rdkit.py --tb=short -q
+        run: uv run pytest tests/test_correctness_vs_rdkit.py --tb=short -q
+
 

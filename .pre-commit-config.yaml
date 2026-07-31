@@ -24,9 +24,13 @@ repos:
   # ── Affected-test selection (pre-commit) + full suite (pre-push) ─────────────
   #
   # NOTE: chem-engine is a Rust-Python extension (maturin).
-  # The extension must be built before running tests:
-  #   maturin develop --release
-  #   (or: pip install -e . --no-build-isolation)
+  # Build the extension and set up the dev environment with uv first:
+  #
+  #   uv sync                             # install dev deps into .venv
+  #   maturin develop --release           # compile Rust extension in-place
+  #   uv run detect-secrets scan > .secrets.baseline
+  #   uv run pre-commit install --install-hooks
+  #   uv run pre-commit install --hook-type pre-push
   #
   # pytest-testmon (pre-commit):
   #   Skips tests whose covered lines haven't changed since last run.
@@ -52,4 +56,5 @@ repos:
         pass_filenames: false
         types: [python]
         stages: [pre-push]
+
 

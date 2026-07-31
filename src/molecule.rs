@@ -193,7 +193,7 @@ impl RustMolecule {
     pub fn similarity(&self, other: &RustMolecule) -> f64 {
         let fp1 = self.get_fingerprint();
         let fp2 = other.get_fingerprint();
-        
+
         let mut intersection = 0;
         let mut union = 0;
         for i in 0..2048 {
@@ -204,7 +204,7 @@ impl RustMolecule {
                 union += 1;
             }
         }
-        
+
         if union == 0 {
             0.0
         } else {
@@ -216,7 +216,7 @@ impl RustMolecule {
     pub fn enumerate_tautomers(&self) -> Vec<RustMolecule> {
         let mut tautomers = vec![self.clone()];
         let num_atoms = self.inner.atoms.len();
-        
+
         // Rules engine to find keto-enol / amide-imidic tautomeric systems
         // Pattern: [O,N,S]=[C,N]-[C,N]-[H] (1-3 proton shift)
         for bond_idx in 0..self.inner.bonds.len() {
@@ -268,7 +268,7 @@ impl RustMolecule {
                     // Create tautomer molecule by shifting proton
                     let mut t_mol = self.clone();
                     let mut t_data = (*t_mol.inner).clone();
-                    
+
                     // 1. Shift H from neighbor to heteroatom
                     if t_data.atoms[c_neigh].num_explicit_hs > 0 {
                         t_data.atoms[c_neigh].num_explicit_hs -= 1;
@@ -356,7 +356,7 @@ impl RustMolecule {
         let num_atoms = self.inner.atoms.len();
         let mut visited = vec![false; num_atoms];
         let mut queue = std::collections::VecDeque::new();
-        
+
         queue.push_back(u);
         visited[u] = true;
 
@@ -451,14 +451,14 @@ impl RustMolecule {
 
 fn score_tautomer(mol: &RustMolecule) -> i32 {
     let mut score = 0;
-    
+
     // Keto form preferenced over enol form
     // Count double bonded oxygen C=O
     for bond in &mol.inner.bonds {
         if bond.bond_type == BondType::Double {
             let u_atom = &mol.inner.atoms[bond.source_idx];
             let v_atom = &mol.inner.atoms[bond.target_idx];
-            
+
             if (u_atom.atomic_number == 8 && v_atom.atomic_number == 6) ||
                (v_atom.atomic_number == 8 && u_atom.atomic_number == 6) {
                 score += 15;

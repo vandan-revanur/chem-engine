@@ -1,9 +1,9 @@
 # chem-engine - Benchmarking Summary
 
-> **Platform:** Intel Core i7-11850H @ 2.50 GHz, 16 threads, 33 GB RAM, Linux x86_64  
-> **chem-engine:** v0.1.0 (`maturin develop --release`)  
-> **RDKit:** 2026.03.2  
-> **Date:** July 31, 2026  
+> **Platform:** Intel Core i7-11850H @ 2.50 GHz, 16 threads, 33 GB RAM, Linux x86_64
+> **chem-engine:** v0.1.0 (`maturin develop --release`)
+> **RDKit:** 2026.03.2
+> **Date:** July 31, 2026
 > **Test suite:** 481 tests, 0 failures
 
 ---
@@ -24,15 +24,15 @@
 | Substructure search | 0.005 ms | 0.013 ms | **2.4×** |
 | Batch parse - 1 000 mols (Rayon) | 0.69 ms | 9.55 ms | **13.8×** |
 
-† Tautomer speedup reflects reduced rule coverage (keto-enol only vs RDKit's 36-rule set).  
+† Tautomer speedup reflects reduced rule coverage (keto-enol only vs RDKit's 36-rule set).
 ❌ Tanimoto is slower due to `Vec<bool>` fingerprint storage (no SIMD popcount); fix pending.
 
 ---
 
 ## 2. Large-scale parallel benchmark - ChEMBL 37, up to 50 K molecules
 
-Harness: `benchmarks/large_scale_benchmark.py`  
-Configuration: 4 workers (`cpu_count // 2`), `ProcessPoolExecutor`, `os.nice(10)`, 50 ms inter-chunk sleep  
+Harness: `benchmarks/large_scale_benchmark.py`
+Configuration: 4 workers (`cpu_count // 2`), `ProcessPoolExecutor`, `os.nice(10)`, 50 ms inter-chunk sleep
 Numbers include IPC overhead (SMILES pickled across process boundary).
 
 ### SMILES Parsing
@@ -89,8 +89,8 @@ Numbers include IPC overhead (SMILES pickled across process boundary).
 
 ## 3. Extreme-scale streaming benchmark - ChEMBL 37 cycled / multi-DB, up to 10 M molecules
 
-Harness: `benchmarks/extreme_scale_benchmark.py`  
-Configuration: 5 workers (`cpu_count // 3`), streaming 200 K validated pool cycled to reach 1 M/10 M,  
+Harness: `benchmarks/extreme_scale_benchmark.py`
+Configuration: 5 workers (`cpu_count // 3`), streaming 200 K validated pool cycled to reach 1 M/10 M,
 memory watchdog (psutil, 70% RAM limit), 10-min time budget per operation, `os.nice(10)`
 
 > Numbers at 1 M are **measured**; 10 M are **projected** from measured trends (±5%).
@@ -214,4 +214,3 @@ python benchmarks/extreme_scale_benchmark.py \
 # Full test suite (481 tests)
 python -m pytest tests/ -q
 ```
-

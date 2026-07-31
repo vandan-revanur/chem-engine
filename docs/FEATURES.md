@@ -220,7 +220,7 @@ mol = ce.generate_3d_coords(mol)
 coords = mol.coords_3d    # list of [x, y, z] for each heavy atom
 ```
 
-**Speedup vs RDKit `EmbedMolecule` (ETKDG):** ~37x  
+**Speedup vs RDKit `EmbedMolecule` (ETKDG):** ~37x
 **Note:** Operates on heavy atoms only (no explicit H). For full stereochemical
 accuracy, use RDKit's ETKDG after converting via `to_rdkit()`.
 
@@ -237,7 +237,7 @@ mol = ce.parse_smiles("[H]O[H]")
 print(mol.amw)   # 18.015
 ```
 
-AMW = sum of heavy-atom masses + explicit H masses (1.008 Da per H).  
+AMW = sum of heavy-atom masses + explicit H masses (1.008 Da per H).
 **Important:** Implicit hydrogens on organic-subset atoms (e.g., `C` in `CCO`)
 are not counted unless written explicitly as bracket atoms (`[CH4]`).
 Use `[H]O[H]` form or convert via RDKit for full-precision MW.
@@ -445,7 +445,7 @@ The organic subset (without brackets) supports: B, C, N, O, F, P, S, Cl, Br, I.
 
 ### Organic subset (no brackets needed)
 
-`B` `C` `N` `O` `F` `P` `S` `Cl` `Br` `I` `H`  
+`B` `C` `N` `O` `F` `P` `S` `Cl` `Br` `I` `H`
 Aromatic variants: `b` `c` `n` `o` `p` `s` (and `as`, `se`)
 
 ### Full element table (bracket notation `[Na+]`, `[Fe]`, etc.)
@@ -475,4 +475,3 @@ Aromatic variants: `b` `c` `n` `o` `p` `s` (and `as`, `se`)
 | **Macromolecules** | No support for BIOVIA extended SMILES or HELM | Out of scope for v0.1 |
 | **Reaction SMILES** | Not supported | Out of scope |
 | **SMARTS queries** | `has_substruct_match` uses SMILES queries, not SMARTS patterns | Add SMARTS parser |
-

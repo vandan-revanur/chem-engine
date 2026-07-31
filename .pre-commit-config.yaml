@@ -1,0 +1,58 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.11.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+
+  # ── Affected-test selection (pre-commit) + full suite (pre-push) ─────────────
+  #
+  # NOTE: chem-engine is a Rust-Python extension (maturin).
+  # Build the extension and set up the dev environment with uv first:
+  #
+  #   uv sync                             # install dev deps into .venv
+  #   maturin develop --release           # compile Rust extension in-place
+  #   uv run detect-secrets scan > .secrets.baseline
+  #   uv run pre-commit install --install-hooks
+  #   uv run pre-commit install --hook-type pre-push
+  #
+  # pytest-testmon (pre-commit):
+  #   Skips tests whose covered lines haven't changed since last run.
+  #   First run builds the .testmondata DB (full suite).
+  #
+  # pytest-xdist (pre-push):
+  #   Full suite in parallel — authoritative green-light before push.
+  #
+  - repo: local
+    hooks:
+      - id: pytest-testmon
+        name: "pytest-testmon: run only affected tests"
+        language: system
+        entry: uv run pytest tests/ --testmon --ignore=tests/test_correctness_vs_rdkit.py
+        pass_filenames: false
+        types: [python]
+        stages: [pre-commit]
+
+      - id: pytest-xdist-full
+        name: "pytest-xdist: full test suite in parallel (pre-push)"
+        language: system
+        entry: uv run pytest tests/ -n auto --ignore=tests/test_correctness_vs_rdkit.py
+        pass_filenames: false
+        types: [python]
+        stages: [pre-push]

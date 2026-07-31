@@ -66,9 +66,9 @@ that is ~5-8x faster than RDKit's parser for typical drug-like molecules.
 ```python
 import chem_engine as ce
 
-mol = ce.parse_smiles("CC(=O)Oc1ccccc1C(=O)O")   # aspirin
-print(mol.num_atoms)   # 13
-print(mol.num_bonds)   # 13
+mol = ce.parse_smiles("CC(=O)Oc1ccccc1C(=O)O")  # aspirin
+print(mol.num_atoms)  # 13
+print(mol.num_bonds)  # 13
 ```
 
 ---
@@ -152,9 +152,9 @@ mol.coords_3d = [[0.0, 0.0, 0.0], ...]
 import chem_engine as ce
 
 mol = ce.RustMolecule()
-mol.add_atom(ce.Atom(6))             # carbon
-mol.add_atom(ce.Atom(8))             # oxygen
-mol.add_bond(0, 1, ce.BondType.Double)   # C=O (formaldehyde)
+mol.add_atom(ce.Atom(6))  # carbon
+mol.add_atom(ce.Atom(8))  # oxygen
+mol.add_bond(0, 1, ce.BondType.Double)  # C=O (formaldehyde)
 print(mol.num_atoms, mol.num_bonds)  # 2, 1
 ```
 
@@ -176,7 +176,7 @@ Generates a canonical SMILES string using a Morgan-rank DFS traversal.
 ```python
 mol1 = ce.parse_smiles("CCO")
 mol2 = ce.parse_smiles("OCC")
-assert ce.canonicalize(mol1) == ce.canonicalize(mol2)   # True
+assert ce.canonicalize(mol1) == ce.canonicalize(mol2)  # True
 ```
 
 **Speedup vs RDKit:** ~9x
@@ -195,7 +195,7 @@ Assigns 2D (x, y) coordinates to each heavy atom using a **force-directed layout
 ```python
 mol = ce.parse_smiles("c1ccccc1")
 mol = ce.generate_2d_coords(mol)
-coords = mol.coords_2d           # list of [x, y] for each atom
+coords = mol.coords_2d  # list of [x, y] for each atom
 ```
 
 **Speedup vs RDKit `Compute2DCoords`:** ~2.8x
@@ -217,10 +217,10 @@ Returns a new `RustMolecule` with `coords_3d` populated.
 ```python
 mol = ce.parse_smiles("CC(=O)Oc1ccccc1C(=O)O")  # aspirin
 mol = ce.generate_3d_coords(mol)
-coords = mol.coords_3d    # list of [x, y, z] for each heavy atom
+coords = mol.coords_3d  # list of [x, y, z] for each heavy atom
 ```
 
-**Speedup vs RDKit `EmbedMolecule` (ETKDG):** ~37x  
+**Speedup vs RDKit `EmbedMolecule` (ETKDG):** ~37x
 **Note:** Operates on heavy atoms only (no explicit H). For full stereochemical
 accuracy, use RDKit's ETKDG after converting via `to_rdkit()`.
 
@@ -234,10 +234,10 @@ Descriptors are computed as properties on `RustMolecule`.
 
 ```python
 mol = ce.parse_smiles("[H]O[H]")
-print(mol.amw)   # 18.015
+print(mol.amw)  # 18.015
 ```
 
-AMW = sum of heavy-atom masses + explicit H masses (1.008 Da per H).  
+AMW = sum of heavy-atom masses + explicit H masses (1.008 Da per H).
 **Important:** Implicit hydrogens on organic-subset atoms (e.g., `C` in `CCO`)
 are not counted unless written explicitly as bracket atoms (`[CH4]`).
 Use `[H]O[H]` form or convert via RDKit for full-precision MW.
@@ -248,7 +248,7 @@ Use `[H]O[H]` form or convert via RDKit for full-precision MW.
 
 ```python
 mol = ce.parse_smiles("CCCC")
-print(mol.num_rotatable_bonds)   # 1
+print(mol.num_rotatable_bonds)  # 1
 ```
 
 Definition: a single bond that is:
@@ -272,7 +272,7 @@ Produces a **2048-bit ECFP2-style Morgan fingerprint**:
 - Bits set at every round for every atom
 
 ```python
-fp = mol.get_fingerprint()   # list of 2048 booleans
+fp = mol.get_fingerprint()  # list of 2048 booleans
 ```
 
 ### Tanimoto Similarity
@@ -282,10 +282,10 @@ fp = mol.get_fingerprint()   # list of 2048 booleans
 Computes the Tanimoto (Jaccard) coefficient over the 2048-bit fingerprints.
 
 ```python
-ethanol   = ce.parse_smiles("CCO")
+ethanol = ce.parse_smiles("CCO")
 ethylamine = ce.parse_smiles("CCN")
-print(ethanol.similarity(ethylamine))   # ~0.20
-print(ethanol.similarity(ethanol))      # 1.0
+print(ethanol.similarity(ethylamine))  # ~0.20
+print(ethanol.similarity(ethanol))  # 1.0
 ```
 
 Properties:
@@ -308,10 +308,10 @@ Checks whether `query` is a subgraph of `target` using backtracking VF-style
 atom-by-atom assignment with exact bond-type and aromaticity matching.
 
 ```python
-benzene  = ce.parse_smiles("c1ccccc1")
-aspirin  = ce.parse_smiles("CC(=O)Oc1ccccc1C(=O)O")
-print(aspirin.has_substruct_match(benzene))   # True
-print(benzene.has_substruct_match(aspirin))   # False
+benzene = ce.parse_smiles("c1ccccc1")
+aspirin = ce.parse_smiles("CC(=O)Oc1ccccc1C(=O)O")
+print(aspirin.has_substruct_match(benzene))  # True
+print(benzene.has_substruct_match(aspirin))  # False
 ```
 
 Matching rules:
@@ -337,7 +337,7 @@ Applies 1,3 proton-shift rules to generate tautomers:
 ```python
 acetone = ce.parse_smiles("CC(=O)C")
 tautomers = acetone.enumerate_tautomers()
-print(len(tautomers))   # >= 2 (keto + enol)
+print(len(tautomers))  # >= 2 (keto + enol)
 ```
 
 All tautomers have the same atom count as the input.
@@ -370,7 +370,7 @@ thread pool (all available CPU cores).
 
 ```python
 smiles_list = ["CCO", "CCCC", "c1ccccc1"] * 10_000
-molecules = ce.batch_parse_smiles(smiles_list)   # parallel, uses all cores
+molecules = ce.batch_parse_smiles(smiles_list)  # parallel, uses all cores
 ```
 
 Properties:
@@ -395,7 +395,7 @@ Uses V2000 MolBlock as the interchange format.
 from chem_engine.utils import to_rdkit
 
 rust_mol = ce.parse_smiles("c1ccccc1")
-rd_mol = to_rdkit(rust_mol)        # rdkit.Chem.Mol
+rd_mol = to_rdkit(rust_mol)  # rdkit.Chem.Mol
 smiles = Chem.MolToSmiles(rd_mol)  # RDKit canonical SMILES
 ```
 
@@ -405,7 +405,7 @@ smiles = Chem.MolToSmiles(rd_mol)  # RDKit canonical SMILES
 from chem_engine.utils import from_rdkit
 
 rd_mol = Chem.MolFromSmiles("CC(=O)Oc1ccccc1C(=O)O")
-rust_mol = from_rdkit(rd_mol)      # RustMolecule
+rust_mol = from_rdkit(rd_mol)  # RustMolecule
 ```
 
 ### What is preserved in round-trip
@@ -445,7 +445,7 @@ The organic subset (without brackets) supports: B, C, N, O, F, P, S, Cl, Br, I.
 
 ### Organic subset (no brackets needed)
 
-`B` `C` `N` `O` `F` `P` `S` `Cl` `Br` `I` `H`  
+`B` `C` `N` `O` `F` `P` `S` `Cl` `Br` `I` `H`
 Aromatic variants: `b` `c` `n` `o` `p` `s` (and `as`, `se`)
 
 ### Full element table (bracket notation `[Na+]`, `[Fe]`, etc.)
@@ -475,4 +475,3 @@ Aromatic variants: `b` `c` `n` `o` `p` `s` (and `as`, `se`)
 | **Macromolecules** | No support for BIOVIA extended SMILES or HELM | Out of scope for v0.1 |
 | **Reaction SMILES** | Not supported | Out of scope |
 | **SMARTS queries** | `has_substruct_match` uses SMILES queries, not SMARTS patterns | Add SMARTS parser |
-

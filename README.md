@@ -36,19 +36,28 @@ See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) for full throughput tables at 1K, 5
 
 ## Installation
 
-### From source (requires Rust toolchain + maturin)
+### From source (requires Rust toolchain)
 
 ```bash
-# Install Rust: https://rustup.rs
+# 1. Install Rust: https://rustup.rs
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Install maturin
-pip install maturin
+# 2. Install uv (if not already installed): https://docs.astral.sh/uv/
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Build and install chem-engine
+# 3. Clone and build
 git clone https://github.com/vandan-revanur/chem-engine.git
 cd chem-engine
-maturin develop --release
+uv sync                          # creates .venv, installs all dev deps (incl. maturin)
+uv run maturin develop --release # compiles Rust extension in-place
+```
+
+### Dev environment setup (first time)
+
+```bash
+uv run detect-secrets scan > .secrets.baseline   # initialise secrets baseline
+uv run pre-commit install --install-hooks         # hook runs on git commit
+uv run pre-commit install --hook-type pre-push    # hook runs on git push
 ```
 
 ---
@@ -59,32 +68,32 @@ maturin develop --release
 import chem_engine as ce
 
 # Parse SMILES
-mol = ce.parse_smiles("CC(=O)Oc1ccccc1C(=O)O")   # aspirin
-print(mol.num_atoms)              # 13
-print(mol.num_bonds)              # 13
-print(mol.amw)                    # ~180 (heavy atoms only)
-print(mol.num_rotatable_bonds)    # 3
+mol = ce.parse_smiles("CC(=O)Oc1ccccc1C(=O)O")  # aspirin
+print(mol.num_atoms)  # 13
+print(mol.num_bonds)  # 13
+print(mol.amw)  # ~180 (heavy atoms only)
+print(mol.num_rotatable_bonds)  # 3
 
 # Canonical SMILES
 can = ce.canonicalize(mol)
-print(can)   # deterministic string
+print(can)  # deterministic string
 
 # 2D layout
 mol2d = ce.generate_2d_coords(mol)
-print(mol2d.coords_2d)   # [[x, y], ...]
+print(mol2d.coords_2d)  # [[x, y], ...]
 
 # 3D embedding
 mol3d = ce.generate_3d_coords(mol)
-print(mol3d.coords_3d)   # [[x, y, z], ...]
+print(mol3d.coords_3d)  # [[x, y, z], ...]
 
 # Fingerprint and similarity
-fp = mol.get_fingerprint()          # 2048-bit ECFP2
-sim = mol.similarity(mol)           # 1.0
+fp = mol.get_fingerprint()  # 2048-bit ECFP2
+sim = mol.similarity(mol)  # 1.0
 print(sim)
 
 # Substructure search
 benzene = ce.parse_smiles("c1ccccc1")
-print(mol.has_substruct_match(benzene))   # True
+print(mol.has_substruct_match(benzene))  # True
 
 # Tautomers
 acetone = ce.parse_smiles("CC(=O)C")
@@ -106,16 +115,16 @@ from rdkit import Chem
 # chem-engine -> RDKit
 rust_mol = ce.parse_smiles("c1ccccc1")
 rd_mol = to_rdkit(rust_mol)
-print(Chem.MolToSmiles(rd_mol))   # RDKit canonical SMILES
+print(Chem.MolToSmiles(rd_mol))  # RDKit canonical SMILES
 
 # RDKit -> chem-engine
 rd_mol = Chem.MolFromSmiles("CC(=O)O")
 rust_mol = from_rdkit(rd_mol)
-print(rust_mol.num_atoms)         # 4
+print(rust_mol.num_atoms)  # 4
 
 # Typical pattern: fast Rust pipeline, RDKit for accuracy-critical steps
 rust_mol = ce.generate_3d_coords(ce.parse_smiles(smiles))
-rd_mol = to_rdkit(rust_mol)       # hand off to RDKit
+rd_mol = to_rdkit(rust_mol)  # hand off to RDKit
 ```
 
 ---
@@ -168,11 +177,17 @@ See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) for full benchmark methodology and 
 ## Running the tests
 
 ```bash
-# Full test suite (481 tests, 0 failures)
-python -m pytest tests/ -q
+# Full test suite in parallel (286 tests, 0 failures)
+uv run pytest tests/ -n auto -q
 
-# With verbose output
-python -m pytest tests/ -v
+# With coverage report
+uv run pytest tests/ -n auto --cov=chem_engine --cov-report=term-missing
+
+# Affected tests only (fast, uses testmon — re-runs only tests touching changed files)
+uv run pytest tests/ --testmon
+
+# RDKit cross-validation (requires rdkit: uv pip install rdkit)
+uv run pytest tests/test_correctness_vs_rdkit.py -v
 ```
 
 Test files:
@@ -251,5 +266,3 @@ See [docs/FEATURES.md#limitations](docs/FEATURES.md#13-limitations-and-known-gap
 ## License
 
 [MIT](LICENSE) - Copyright (c) 2026 Vandan Revanur
-
-

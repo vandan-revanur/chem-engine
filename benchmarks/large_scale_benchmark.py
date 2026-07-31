@@ -20,20 +20,21 @@ Operations benchmarked at multiple scales (1K / 10K / 100K / 1M):
 
 import argparse
 import gzip
-import time
-import sys
 import statistics
+import sys
+import time
 import warnings
-from pathlib import Path
 
 # Suppress RDKit kekulization warnings for large-scale runs
 from rdkit import RDLogger
+
 RDLogger.DisableLog("rdApp.*")
 
-import chem_engine as ro
 from rdkit import Chem
 from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
 from rdkit.Chem.MolStandardize import rdMolStandardize
+
+import chem_engine as ro
 
 warnings.filterwarnings("ignore")
 
@@ -41,8 +42,10 @@ warnings.filterwarnings("ignore")
 # Dataset loading
 # ---------------------------------------------------------------------------
 
-def load_chembl_smiles(path: str, max_mols: int = 2_000_000,
-                       max_smiles_len: int = 150) -> list[str]:
+
+def load_chembl_smiles(
+    path: str, max_mols: int = 2_000_000, max_smiles_len: int = 150
+) -> list[str]:
     """
     Load canonical SMILES from the ChEMBL chemreps TSV (gzip or plain).
     Filters out peptides / macromolecules (SMILES > max_smiles_len chars)
@@ -91,6 +94,7 @@ def load_chembl_smiles(path: str, max_mols: int = 2_000_000,
 # Benchmark helpers
 # ---------------------------------------------------------------------------
 
+
 def throughput(fn, n_mols: int, n_reps: int = 3) -> tuple[float, float]:
     """Run fn() n_reps times; return (mean_mols_per_sec, stdev)."""
     times = []
@@ -98,17 +102,15 @@ def throughput(fn, n_mols: int, n_reps: int = 3) -> tuple[float, float]:
         t0 = time.perf_counter()
         fn()
         times.append(time.perf_counter() - t0)
-    mean_t = statistics.mean(times)
-    stdev_t = statistics.stdev(times) if len(times) > 1 else 0.0
     mps_vals = [n_mols / t for t in times]
     return statistics.mean(mps_vals), statistics.stdev(mps_vals) if len(mps_vals) > 1 else 0.0
 
 
 def fmt(mps: float, sd: float) -> str:
     if mps >= 1_000_000:
-        return f"{mps/1e6:.2f} M mol/s  (±{sd/1e6:.2f})"
+        return f"{mps / 1e6:.2f} M mol/s  (±{sd / 1e6:.2f})"
     if mps >= 1_000:
-        return f"{mps/1e3:.1f} K mol/s  (±{sd/1e3:.1f})"
+        return f"{mps / 1e3:.1f} K mol/s  (±{sd / 1e3:.1f})"
     return f"{mps:.0f} mol/s  (±{sd:.0f})"
 
 
@@ -142,13 +144,13 @@ def run_benchmarks(smiles_all: list[str]):
         subset = smiles_all[:N]
         n_reps = max(1, min(5, 20_000 // N))
 
-        ce_mps, ce_sd = throughput(
-            lambda s=subset: [ro.parse_smiles(x) for x in s], N, n_reps)
-        rk_mps, rk_sd = throughput(
-            lambda s=subset: [Chem.MolFromSmiles(x) for x in s], N, n_reps)
+        ce_mps, ce_sd = throughput(lambda s=subset: [ro.parse_smiles(x) for x in s], N, n_reps)
+        rk_mps, rk_sd = throughput(lambda s=subset: [Chem.MolFromSmiles(x) for x in s], N, n_reps)
 
         spd = ratio_str(ce_mps, rk_mps)
-        print(f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+        print(
+            f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+        )
         parse_rows.append((N, ce_mps, rk_mps))
         results[f"parse_{N}"] = (ce_mps, rk_mps)
 
@@ -164,13 +166,13 @@ def run_benchmarks(smiles_all: list[str]):
         ce_mols = [ro.parse_smiles(s) for s in subset]
         rd_mols = [Chem.MolFromSmiles(s) for s in subset]
 
-        ce_mps, ce_sd = throughput(
-            lambda m=ce_mols: [ro.canonicalize(x) for x in m], N, n_reps)
-        rk_mps, rk_sd = throughput(
-            lambda m=rd_mols: [Chem.MolToSmiles(x) for x in m], N, n_reps)
+        ce_mps, ce_sd = throughput(lambda m=ce_mols: [ro.canonicalize(x) for x in m], N, n_reps)
+        rk_mps, rk_sd = throughput(lambda m=rd_mols: [Chem.MolToSmiles(x) for x in m], N, n_reps)
 
         spd = ratio_str(ce_mps, rk_mps)
-        print(f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+        print(
+            f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+        )
         results[f"canonical_{N}"] = (ce_mps, rk_mps)
 
     # -----------------------------------------------------------------------
@@ -185,13 +187,13 @@ def run_benchmarks(smiles_all: list[str]):
         ce_mols = [ro.parse_smiles(s) for s in subset]
         rd_mols = [Chem.MolFromSmiles(s) for s in subset]
 
-        ce_mps, ce_sd = throughput(
-            lambda m=ce_mols: [x.amw for x in m], N, n_reps)
-        rk_mps, rk_sd = throughput(
-            lambda m=rd_mols: [Descriptors.MolWt(x) for x in m], N, n_reps)
+        ce_mps, ce_sd = throughput(lambda m=ce_mols: [x.amw for x in m], N, n_reps)
+        rk_mps, rk_sd = throughput(lambda m=rd_mols: [Descriptors.MolWt(x) for x in m], N, n_reps)
 
         spd = ratio_str(ce_mps, rk_mps)
-        print(f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+        print(
+            f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+        )
         results[f"amw_{N}"] = (ce_mps, rk_mps)
 
     # -----------------------------------------------------------------------
@@ -206,13 +208,15 @@ def run_benchmarks(smiles_all: list[str]):
         ce_mols = [ro.parse_smiles(s) for s in subset]
         rd_mols = [Chem.MolFromSmiles(s) for s in subset]
 
-        ce_mps, ce_sd = throughput(
-            lambda m=ce_mols: [x.num_rotatable_bonds for x in m], N, n_reps)
+        ce_mps, ce_sd = throughput(lambda m=ce_mols: [x.num_rotatable_bonds for x in m], N, n_reps)
         rk_mps, rk_sd = throughput(
-            lambda m=rd_mols: [rdMolDescriptors.CalcNumRotatableBonds(x) for x in m], N, n_reps)
+            lambda m=rd_mols: [rdMolDescriptors.CalcNumRotatableBonds(x) for x in m], N, n_reps
+        )
 
         spd = ratio_str(ce_mps, rk_mps)
-        print(f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+        print(
+            f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+        )
         results[f"rotbonds_{N}"] = (ce_mps, rk_mps)
 
     # -----------------------------------------------------------------------
@@ -223,6 +227,7 @@ def run_benchmarks(smiles_all: list[str]):
     sim_subset = smiles_all[:SIM_N]
     ce_mols_sim = [ro.parse_smiles(s) for s in sim_subset]
     from rdkit.Chem import MorganGenerator
+
     gen = MorganGenerator.GetMorganGenerator(radius=2, fpSize=2048)
     rd_fps = [gen.GetFingerprint(Chem.MolFromSmiles(s)) for s in sim_subset]
     from rdkit import DataStructs
@@ -241,7 +246,9 @@ def run_benchmarks(smiles_all: list[str]):
     ce_mps, ce_sd = throughput(ce_sim_fn, n_pairs, 3)
     rk_mps, rk_sd = throughput(rk_sim_fn, n_pairs, 3)
     spd = ratio_str(ce_mps, rk_mps)
-    print(f"  N={SIM_N:>8,}²/2 = {n_pairs:,} pairs | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+    print(
+        f"  N={SIM_N:>8,}²/2 = {n_pairs:,} pairs | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+    )
     results[f"tanimoto_{SIM_N}"] = (ce_mps, rk_mps)
 
     # -----------------------------------------------------------------------
@@ -259,12 +266,16 @@ def run_benchmarks(smiles_all: list[str]):
         rd_mols_t = [Chem.MolFromSmiles(s) for s in subset]
 
         ce_mps, ce_sd = throughput(
-            lambda m=ce_mols_t: [x.enumerate_tautomers() for x in m], N, n_reps)
+            lambda m=ce_mols_t: [x.enumerate_tautomers() for x in m], N, n_reps
+        )
         rk_mps, rk_sd = throughput(
-            lambda m=rd_mols_t, e=enumerator: [e.Enumerate(x) for x in m], N, n_reps)
+            lambda m=rd_mols_t, e=enumerator: [e.Enumerate(x) for x in m], N, n_reps
+        )
 
         spd = ratio_str(ce_mps, rk_mps)
-        print(f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+        print(
+            f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+        )
         results[f"tautomers_{N}"] = (ce_mps, rk_mps)
 
     # -----------------------------------------------------------------------
@@ -283,12 +294,16 @@ def run_benchmarks(smiles_all: list[str]):
         rd_targets = [Chem.MolFromSmiles(s) for s in subset]
 
         ce_mps, ce_sd = throughput(
-            lambda t=ce_targets, q=query_ce: [x.has_substruct_match(q) for x in t], N, n_reps)
+            lambda t=ce_targets, q=query_ce: [x.has_substruct_match(q) for x in t], N, n_reps
+        )
         rk_mps, rk_sd = throughput(
-            lambda t=rd_targets, q=query_rk: [x.HasSubstructMatch(q) for x in t], N, n_reps)
+            lambda t=rd_targets, q=query_rk: [x.HasSubstructMatch(q) for x in t], N, n_reps
+        )
 
         spd = ratio_str(ce_mps, rk_mps)
-        print(f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+        print(
+            f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+        )
         results[f"substruct_{N}"] = (ce_mps, rk_mps)
 
     # -----------------------------------------------------------------------
@@ -305,12 +320,16 @@ def run_benchmarks(smiles_all: list[str]):
         rd_mols_2d = [Chem.MolFromSmiles(s) for s in subset]
 
         ce_mps, ce_sd = throughput(
-            lambda m=ce_mols_2d: [ro.generate_2d_coords(x) for x in m], N, n_reps)
+            lambda m=ce_mols_2d: [ro.generate_2d_coords(x) for x in m], N, n_reps
+        )
         rk_mps, rk_sd = throughput(
-            lambda m=rd_mols_2d: [AllChem.Compute2DCoords(x) for x in m], N, n_reps)
+            lambda m=rd_mols_2d: [AllChem.Compute2DCoords(x) for x in m], N, n_reps
+        )
 
         spd = ratio_str(ce_mps, rk_mps)
-        print(f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+        print(
+            f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+        )
         results[f"layout2d_{N}"] = (ce_mps, rk_mps)
 
     # -----------------------------------------------------------------------
@@ -331,11 +350,14 @@ def run_benchmarks(smiles_all: list[str]):
                 AllChem.EmbedMolecule(m, randomSeed=42)
 
         ce_mps, ce_sd = throughput(
-            lambda m=ce_mols_3d: [ro.generate_3d_coords(x) for x in m], N, n_reps)
+            lambda m=ce_mols_3d: [ro.generate_3d_coords(x) for x in m], N, n_reps
+        )
         rk_mps, rk_sd = throughput(rk_3d_fn, N, n_reps)
 
         spd = ratio_str(ce_mps, rk_mps)
-        print(f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+        print(
+            f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+        )
         results[f"embed3d_{N}"] = (ce_mps, rk_mps)
 
     # -----------------------------------------------------------------------
@@ -348,13 +370,13 @@ def run_benchmarks(smiles_all: list[str]):
         subset = smiles_all[:N]
         n_reps = max(1, min(5, 20_000 // N))
 
-        ce_mps, ce_sd = throughput(
-            lambda s=subset: ro.batch_parse_smiles(s), N, n_reps)
-        rk_mps, rk_sd = throughput(
-            lambda s=subset: [Chem.MolFromSmiles(x) for x in s], N, n_reps)
+        ce_mps, ce_sd = throughput(lambda s=subset: ro.batch_parse_smiles(s), N, n_reps)
+        rk_mps, rk_sd = throughput(lambda s=subset: [Chem.MolFromSmiles(x) for x in s], N, n_reps)
 
         spd = ratio_str(ce_mps, rk_mps)
-        print(f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}")
+        print(
+            f"  N={N:>8,} | CE: {fmt(ce_mps, ce_sd):>30} | RDKit: {fmt(rk_mps, rk_sd):>30} | Speedup: {spd}"
+        )
         results[f"batch_{N}"] = (ce_mps, rk_mps)
 
     # -----------------------------------------------------------------------
@@ -381,12 +403,18 @@ def run_benchmarks(smiles_all: list[str]):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--chembl", default="/tmp/chembl_37_chemreps.txt.gz",
-                        help="Path to chembl_37_chemreps.txt[.gz]")
-    parser.add_argument("--max-mols", type=int, default=1_200_000,
-                        help="Maximum molecules to load")
-    parser.add_argument("--max-smiles-len", type=int, default=150,
-                        help="Filter out SMILES longer than this (removes macromolecules)")
+    parser.add_argument(
+        "--chembl",
+        default="/tmp/chembl_37_chemreps.txt.gz",
+        help="Path to chembl_37_chemreps.txt[.gz]",
+    )
+    parser.add_argument("--max-mols", type=int, default=1_200_000, help="Maximum molecules to load")
+    parser.add_argument(
+        "--max-smiles-len",
+        type=int,
+        default=150,
+        help="Filter out SMILES longer than this (removes macromolecules)",
+    )
     args = parser.parse_args()
 
     smiles = load_chembl_smiles(args.chembl, args.max_mols, args.max_smiles_len)
@@ -395,4 +423,3 @@ if __name__ == "__main__":
         sys.exit(1)
 
     run_benchmarks(smiles)
-

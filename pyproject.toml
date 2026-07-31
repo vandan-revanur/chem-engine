@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "chem-engine"
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
@@ -15,3 +15,57 @@ dynamic = ["version"]
 [tool.maturin]
 features = ["pyo3/extension-module"]
 module-name = "chem_engine._rust"
+
+# ── dev dependencies ──────────────────────────────────────────────────────────
+[dependency-groups]
+dev = [
+    "maturin>=1.5,<2.0",
+    "pre-commit>=3.0",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff>=0.11",
+    "mypy>=1.0",
+    "pytest-testmon>=2.2.0",
+    "pytest-xdist>=3.8.0",
+]
+
+# ── pytest ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+# ── coverage ──────────────────────────────────────────────────────────────────
+# NOTE: chem-engine is a Rust-Python hybrid. The business logic lives in Rust
+# (src/) which Python's coverage tool cannot measure. The Python layer
+# (chem_engine/utils.py) is a thin interop wrapper ~70 lines. A numeric
+# threshold is therefore meaningless — coverage is reported for visibility only.
+[tool.coverage.run]
+source = ["chem_engine"]
+omit   = ["tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+
+# ── ruff ──────────────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP"]
+ignore = [
+    "S101",   # allow assert in tests
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Benchmarks: intentional import ordering (RDKit warning suppression before
+# remaining rdkit imports) + long formatted output lines are acceptable.
+"benchmarks/**" = ["E402", "E501"]
+# RDKit cross-validation: chem_engine must import after the try/except rdkit guard.
+"tests/test_correctness_vs_rdkit.py" = ["E402"]
+
+# ── mypy ──────────────────────────────────────────────────────────────────────
+[tool.mypy]
+python_version        = "3.11"
+strict                = false
+disallow_untyped_defs = false
+ignore_missing_imports = true

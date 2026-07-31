@@ -32,12 +32,12 @@ pub fn generate_2d_coords(mol: &mut RustMolecule) {
                 let dy = coords[i][1] - coords[j][1];
                 let dist_sq = dx * dx + dy * dy + 1e-4;
                 let dist = dist_sq.sqrt();
-                
+
                 if dist < 5.0 {
                     let force = k_repulsion / dist_sq;
                     let fx = (dx / dist) * force;
                     let fy = (dy / dist) * force;
-                    
+
                     forces[i][0] += fx;
                     forces[i][1] += fy;
                     forces[j][0] -= fx;
@@ -56,7 +56,7 @@ pub fn generate_2d_coords(mol: &mut RustMolecule) {
             let dx = coords[u][0] - coords[v][0];
             let dy = coords[u][1] - coords[v][1];
             let dist = (dx * dx + dy * dy + 1e-4).sqrt();
-            
+
             let force = k_spring * (dist - d_zero);
             let fx = (dx / dist) * force;
             let fy = (dy / dist) * force;
@@ -89,7 +89,7 @@ pub fn generate_3d_coords(mol: &mut RustMolecule) {
     // Distance Geometry (ETKDG-like inflation)
     // 1. Generate Distance Bounds Matrix
     let mut d_matrix = vec![vec![0.0; num_atoms]; num_atoms];
-    
+
     // Build shortest path distances to approximate bounds
     let mut adj = vec![vec![1e9; num_atoms]; num_atoms];
     for i in 0..num_atoms {
@@ -179,10 +179,10 @@ pub fn generate_3d_coords(mol: &mut RustMolecule) {
                 let dy = coords[i][1] - coords[j][1];
                 let dz = coords[i][2] - coords[j][2];
                 let dist = (dx * dx + dy * dy + dz * dz + 1e-4).sqrt();
-                
+
                 let target_dist = d_matrix[i][j];
                 let force = k_bond * (dist - target_dist);
-                
+
                 let fx = (dx / dist) * force;
                 let fy = (dy / dist) * force;
                 let fz = (dz / dist) * force;

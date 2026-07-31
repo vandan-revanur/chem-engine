@@ -13,12 +13,13 @@ Tests cover:
   • Canonical tautomer has correct atom count
   • Canonical tautomer scoring (keto wins over enol)
 """
+
 import pytest
+
 import chem_engine as ro
 
 
 class TestTautomerEnumeration:
-
     def test_acetone_keto_enol(self):
         """Acetone CC(=O)C → keto + enol = ≥ 2 tautomers."""
         m = ro.parse_smiles("CC(=O)C")
@@ -48,7 +49,7 @@ class TestTautomerEnumeration:
         """Ethanol CCO has no C=O so no keto-enol tautomer applies."""
         m = ro.parse_smiles("CCO")
         t = m.enumerate_tautomers()
-        assert len(t) >= 1   # original always returned
+        assert len(t) >= 1  # original always returned
 
     def test_benzene_no_tautomers(self):
         """Aromatic benzene - no tautomeric shifts applicable."""
@@ -78,7 +79,7 @@ class TestTautomerEnumeration:
         """Methyl acetoacetate CC(=O)CC(=O)OC - two carbonyl groups."""
         m = ro.parse_smiles("CC(=O)CC(=O)OC")
         t = m.enumerate_tautomers()
-        assert len(t) >= 1   # at minimum original
+        assert len(t) >= 1  # at minimum original
 
     def test_malonaldehyde_tautomers(self):
         """Malonaldehyde O=CCC=O - two aldehyde groups."""
@@ -107,7 +108,6 @@ class TestTautomerEnumeration:
 
 
 class TestCanonicalTautomer:
-
     def test_canonical_is_rustmolecule(self):
         m = ro.parse_smiles("CC(=O)C")
         c = m.get_canonical_tautomer()
@@ -129,9 +129,11 @@ class TestCanonicalTautomer:
         c = m.get_canonical_tautomer()
         # Canonical tautomer should have at least one C=O bond
         has_c_double_o = any(
-            c.get_bond(i).bond_type == ro.BondType.Double and
-            (c.get_atom(c.get_bond(i).source_idx).atomic_number == 8 or
-             c.get_atom(c.get_bond(i).target_idx).atomic_number == 8)
+            c.get_bond(i).bond_type == ro.BondType.Double
+            and (
+                c.get_atom(c.get_bond(i).source_idx).atomic_number == 8
+                or c.get_atom(c.get_bond(i).target_idx).atomic_number == 8
+            )
             for i in range(c.num_bonds)
         )
         assert has_c_double_o
@@ -150,14 +152,19 @@ class TestCanonicalTautomer:
         assert c.num_atoms == m.num_atoms
         assert c.num_bonds == m.num_bonds
 
-    @pytest.mark.parametrize("smi", [
-        "CC(=O)C", "CC=O", "CC(=O)N", "O=CCC=O",
-        "Cn1cnc2c1c(=O)n(C)c(=O)n2C",
-        "CC(=O)Oc1ccccc1C(=O)O",
-    ])
+    @pytest.mark.parametrize(
+        "smi",
+        [
+            "CC(=O)C",
+            "CC=O",
+            "CC(=O)N",
+            "O=CCC=O",
+            "Cn1cnc2c1c(=O)n(C)c(=O)n2C",
+            "CC(=O)Oc1ccccc1C(=O)O",
+        ],
+    )
     def test_canonical_does_not_crash(self, smi):
         m = ro.parse_smiles(smi)
         c = m.get_canonical_tautomer()
         assert c is not None
         assert c.num_atoms > 0
-

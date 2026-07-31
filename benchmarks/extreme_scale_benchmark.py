@@ -77,9 +77,9 @@ import sys
 import threading
 import time
 import warnings
+from collections.abc import Iterator
 from concurrent.futures import Future, ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Iterator
 
 # ── process priority ─────────────────────────────────────────────────────────
 try:

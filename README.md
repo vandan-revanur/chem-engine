@@ -251,5 +251,3 @@ See [docs/FEATURES.md#limitations](docs/FEATURES.md#13-limitations-and-known-gap
 ## License
 
 [MIT](LICENSE) - Copyright (c) 2026 Vandan Revanur
-
-

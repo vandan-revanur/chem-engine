@@ -55,12 +55,12 @@ fn _rust(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Bond>()?;
     m.add_class::<BondType>()?;
     m.add_class::<RustMolecule>()?;
-    
+
     m.add_function(wrap_pyfunction!(parse_smiles, m)?)?;
     m.add_function(wrap_pyfunction!(canonicalize, m)?)?;
     m.add_function(wrap_pyfunction!(generate_2d_coords, m)?)?;
     m.add_function(wrap_pyfunction!(generate_3d_coords, m)?)?;
     m.add_function(wrap_pyfunction!(batch_parse_smiles, m)?)?;
-    
+
     Ok(())
 }

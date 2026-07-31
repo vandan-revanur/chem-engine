@@ -11,7 +11,9 @@
 ## Why chem-engine?
 
 > "We envision this being done in a completely RDKit-compatible way so teams can benefit from
-> the compute optimization without changing their workflows." - Ari Wagen, Computational Chemist
+> the compute optimization without changing their workflows."
+>
+> -- [Open Source Projects We Wish Existed, Rowan Scientific](https://www.rowansci.com/blog/open-source-projects-we-wish-existed)
 
 RDKit is the industry standard for cheminformatics but its Python layer introduces overhead that
 compounds at scale. `chem-engine` reimplements core RDKit-style operations in Rust - memory-safe,
@@ -249,4 +251,5 @@ See [docs/FEATURES.md#limitations](docs/FEATURES.md#13-limitations-and-known-gap
 ## License
 
 [MIT](LICENSE) - Copyright (c) 2026 Vandan Revanur
+
 

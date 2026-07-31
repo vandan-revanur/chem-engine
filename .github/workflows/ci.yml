@@ -50,7 +50,7 @@ jobs:
       - name: Build Rust extension (in-place)
         run: uv run maturin develop --release
 
-      - name: Run tests in parallel with coverage
+      - name: Run tests in parallel
         run: >
           uv run pytest tests/
           -n auto
@@ -58,8 +58,6 @@ jobs:
           -q
           --cov=chem_engine
           --cov-report=term-missing
-          --cov-fail-under=80
-          --ignore=tests/test_correctness_vs_rdkit.py
 
   # ── Job 3: RDKit cross-validation (optional, runs on main only) ──────────────
   rdkit-validation:

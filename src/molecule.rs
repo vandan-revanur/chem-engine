@@ -2,7 +2,7 @@ use pyo3::prelude::*;
 use crate::atom::Atom;
 use crate::bond::{Bond, BondType};
 use std::sync::Arc;
-use std::collections::{HashSet, HashMap};
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct MoleculeData {
@@ -137,67 +137,53 @@ impl RustMolecule {
         self.backtrack_match(0, &mut assignment, &mut assigned_targets, query)
     }
 
-    // FR-10: Similarity Search
+    // FR-10: Similarity Search — ECFP2-style Morgan fingerprint (radius 2)
     pub fn get_fingerprint(&self) -> Vec<bool> {
         let mut fp = vec![false; 2048];
-        let num_atoms = self.inner.atoms.len();
-        if num_atoms == 0 {
-            return fp;
-        }
+        let n = self.inner.atoms.len();
+        if n == 0 { return fp; }
 
-        for (i, atom) in self.inner.atoms.iter().enumerate() {
-            let mut hash = 0u64;
-            hash = hash.wrapping_add(atom.atomic_number as u64 * 31);
-            hash = hash.wrapping_add(atom.is_aromatic as u64 * 17);
-            fp[(hash % 2048) as usize] = true;
-        }
-
-        for bond in &self.inner.bonds {
-            if bond.source_idx < num_atoms && bond.target_idx < num_atoms {
-                let atom_a = &self.inner.atoms[bond.source_idx];
-                let atom_b = &self.inner.atoms[bond.target_idx];
-                let b_type = bond.bond_type as u64;
-
-                let mut hash1 = 0u64;
-                hash1 = hash1.wrapping_add(atom_a.atomic_number as u64 * 31);
-                hash1 = hash1.wrapping_add(atom_b.atomic_number as u64 * 17);
-                hash1 = hash1.wrapping_add(b_type * 7);
-
-                let mut hash2 = 0u64;
-                hash2 = hash2.wrapping_add(atom_b.atomic_number as u64 * 31);
-                hash2 = hash2.wrapping_add(atom_a.atomic_number as u64 * 17);
-                hash2 = hash2.wrapping_add(b_type * 7);
-
-                fp[(hash1 % 2048) as usize] = true;
-                fp[(hash2 % 2048) as usize] = true;
-            }
-        }
-
-        for i in 0..num_atoms {
-            let neighbors: Vec<(usize, BondType)> = self.inner.bonds.iter()
+        // Pre-compute atom degrees
+        let degrees: Vec<u64> = (0..n).map(|i| {
+            self.inner.bonds.iter()
                 .filter(|b| b.source_idx == i || b.target_idx == i)
-                .map(|b| {
-                    let n = if b.source_idx == i { b.target_idx } else { b.source_idx };
-                    (n, b.bond_type)
-                }).collect();
+                .count() as u64
+        }).collect();
 
-            for j in 0..neighbors.len() {
-                for k in (j + 1)..neighbors.len() {
-                    let (n1, b1) = neighbors[j];
-                    let (n2, b2) = neighbors[k];
-                    let atom_a = &self.inner.atoms[n1];
-                    let atom_center = &self.inner.atoms[i];
-                    let atom_c = &self.inner.atoms[n2];
+        // Round 0: per-atom identifier = FNV hash of (atomic_num, degree, charge, hs, aromatic)
+        let mut env: Vec<u64> = (0..n).map(|i| {
+            let a = &self.inner.atoms[i];
+            let mut h: u64 = 2166136261;
+            h = h.wrapping_mul(16777619).wrapping_add(a.atomic_number as u64);
+            h = h.wrapping_mul(16777619).wrapping_add(degrees[i]);
+            h = h.wrapping_mul(16777619).wrapping_add((a.formal_charge as i64 + 64) as u64);
+            h = h.wrapping_mul(16777619).wrapping_add(a.num_explicit_hs as u64);
+            h = h.wrapping_mul(16777619).wrapping_add(a.is_aromatic as u64);
+            fp[(h % 2048) as usize] = true;
+            h
+        }).collect();
 
-                    let mut hash = 0u64;
-                    hash = hash.wrapping_add(atom_a.atomic_number as u64 * 31);
-                    hash = hash.wrapping_add(atom_center.atomic_number as u64 * 17);
-                    hash = hash.wrapping_add(atom_c.atomic_number as u64 * 7);
-                    hash = hash.wrapping_add(b1 as u64 * 3);
-                    hash = hash.wrapping_add(b2 as u64 * 5);
-
-                    fp[(hash % 2048) as usize] = true;
+        // Rounds 1 and 2: Morgan-style neighbourhood aggregation
+        for _ in 0..2 {
+            let prev = env.clone();
+            for i in 0..n {
+                // Collect (bond_type, neighbour_hash) pairs, sorted for invariance
+                let mut nbr: Vec<(u64, u64)> = self.inner.bonds.iter()
+                    .filter(|b| b.source_idx == i || b.target_idx == i)
+                    .map(|b| {
+                        let j = if b.source_idx == i { b.target_idx } else { b.source_idx };
+                        (b.bond_type as u64, prev[j])
+                    })
+                    .collect();
+                nbr.sort_unstable();
+                let mut h: u64 = 2166136261;
+                h = h.wrapping_mul(16777619).wrapping_add(prev[i]);
+                for (bt, nh) in &nbr {
+                    h = h.wrapping_mul(16777619).wrapping_add(*bt);
+                    h = h.wrapping_mul(16777619).wrapping_add(*nh);
                 }
+                env[i] = h;
+                fp[(h % 2048) as usize] = true;
             }
         }
 

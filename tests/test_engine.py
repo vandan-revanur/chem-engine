@@ -58,7 +58,7 @@ class TestSmilesParsing:
         assert bond.bond_type == ro.BondType.Triple
 
     def test_parse_ring(self):
-        """Cyclohexane: C1CCCCC1 — 6 atoms, 6 bonds"""
+        """Cyclohexane: C1CCCCC1 - 6 atoms, 6 bonds"""
         mol = ro.parse_smiles("C1CCCCC1")
         assert mol.num_atoms == 6
         assert mol.num_bonds == 6
@@ -82,7 +82,7 @@ class TestSmilesParsing:
         assert atom.num_explicit_hs == 4
 
     def test_parse_branch(self):
-        """Isobutane: CC(C)C — 4 atoms, 3 bonds"""
+        """Isobutane: CC(C)C - 4 atoms, 3 bonds"""
         mol = ro.parse_smiles("CC(C)C")
         assert mol.num_atoms == 4
         assert mol.num_bonds == 3
@@ -167,7 +167,7 @@ class TestLayout:
 
     def test_2d_coords_not_all_zero(self):
         """Force-directed layout should spread atoms out"""
-        mol = ro.parse_smiles("CCCC")  # butane — 4 atoms
+        mol = ro.parse_smiles("CCCC")  # butane - 4 atoms
         mol = ro.generate_2d_coords(mol)
         coords = mol.coords_2d
         xs = [c[0] for c in coords]

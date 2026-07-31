@@ -36,19 +36,28 @@ See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) for full throughput tables at 1K, 5
 
 ## Installation
 
-### From source (requires Rust toolchain + maturin)
+### From source (requires Rust toolchain)
 
 ```bash
-# Install Rust: https://rustup.rs
+# 1. Install Rust: https://rustup.rs
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
-# Install maturin
-pip install maturin
+# 2. Install uv (if not already installed): https://docs.astral.sh/uv/
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Build and install chem-engine
+# 3. Clone and build
 git clone https://github.com/vandan-revanur/chem-engine.git
 cd chem-engine
-maturin develop --release
+uv sync                          # creates .venv, installs all dev deps (incl. maturin)
+uv run maturin develop --release # compiles Rust extension in-place
+```
+
+### Dev environment setup (first time)
+
+```bash
+uv run detect-secrets scan > .secrets.baseline   # initialise secrets baseline
+uv run pre-commit install --install-hooks         # hook runs on git commit
+uv run pre-commit install --hook-type pre-push    # hook runs on git push
 ```
 
 ---
@@ -168,11 +177,17 @@ See [docs/BENCHMARKS.md](docs/BENCHMARKS.md) for full benchmark methodology and 
 ## Running the tests
 
 ```bash
-# Full test suite (481 tests, 0 failures)
-python -m pytest tests/ -q
+# Full test suite in parallel (286 tests, 0 failures)
+uv run pytest tests/ -n auto -q
 
-# With verbose output
-python -m pytest tests/ -v
+# With coverage report
+uv run pytest tests/ -n auto --cov=chem_engine --cov-report=term-missing
+
+# Affected tests only (fast, uses testmon — re-runs only tests touching changed files)
+uv run pytest tests/ --testmon
+
+# RDKit cross-validation (requires rdkit: uv pip install rdkit)
+uv run pytest tests/test_correctness_vs_rdkit.py -v
 ```
 
 Test files:
@@ -251,3 +266,5 @@ See [docs/FEATURES.md#limitations](docs/FEATURES.md#13-limitations-and-known-gap
 ## License
 
 [MIT](LICENSE) - Copyright (c) 2026 Vandan Revanur
+
+

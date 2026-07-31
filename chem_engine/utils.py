@@ -6,7 +6,8 @@ Note on PyO3 property naming:
   e.g. get_num_atoms → .num_atoms
        get_coords_2d → .coords_2d
 """
-from ._rust import RustMolecule, Atom, Bond, BondType
+
+from ._rust import Atom, BondType, RustMolecule
 
 
 def to_rdkit(rust_mol: RustMolecule):
@@ -45,14 +46,12 @@ def to_rdkit(rust_mol: RustMolecule):
             x, y, z = 0.0, 0.0, 0.0
 
         symbol = atom.symbol
-        lines.append(
-            f"{x:10.4f}{y:10.4f}{z:10.4f} {symbol:<3s} 0  0  0  0  0  0  0  0  0  0  0  0"
-        )
+        lines.append(f"{x:10.4f}{y:10.4f}{z:10.4f} {symbol:<3s} 0  0  0  0  0  0  0  0  0  0  0  0")
 
     # Bond block
     for j in range(num_bonds):
         bond = rust_mol.get_bond(j)
-        u = bond.source_idx + 1   # MolBlock uses 1-based indexing
+        u = bond.source_idx + 1  # MolBlock uses 1-based indexing
         v = bond.target_idx + 1
 
         b_type = 1  # default: single

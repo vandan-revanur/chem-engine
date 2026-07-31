@@ -3,11 +3,11 @@ from ._rust import (
     Bond,
     BondType,
     RustMolecule,
-    parse_smiles,
+    batch_parse_smiles,
     canonicalize,
     generate_2d_coords,
     generate_3d_coords,
-    batch_parse_smiles,
+    parse_smiles,
 )
 
 __all__ = [

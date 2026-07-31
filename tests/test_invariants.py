@@ -13,29 +13,37 @@ independent of implementation details:
   • Coordinate count equals atom count
   • AMW ordering invariants
 """
+
 import math
+
 import pytest
+
 import chem_engine as ro
 
 REFERENCE_SMILES = [
-    "CCO", "CC(C)C", "C1CCCCC1", "c1ccccc1",
-    "CC(=O)O", "CN", "CCN", "CC(=O)N",
-    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",   # ibuprofen
-    "CC(=O)Oc1ccccc1C(=O)O",         # aspirin
-    "Cn1cnc2c1c(=O)n(C)c(=O)n2C",   # caffeine
+    "CCO",
+    "CC(C)C",
+    "C1CCCCC1",
+    "c1ccccc1",
+    "CC(=O)O",
+    "CN",
+    "CCN",
+    "CC(=O)N",
+    "CC(C)Cc1ccc(cc1)C(C)C(=O)O",  # ibuprofen
+    "CC(=O)Oc1ccccc1C(=O)O",  # aspirin
+    "Cn1cnc2c1c(=O)n(C)c(=O)n2C",  # caffeine
 ]
 
 
 # ─── Tanimoto / Similarity invariants ────────────────────────────────────────
 
-class TestSimilarityInvariants:
 
+class TestSimilarityInvariants:
     def test_self_similarity_always_one(self):
         """sim(A, A) == 1.0 for any non-empty molecule."""
         for smi in REFERENCE_SMILES:
             m = ro.parse_smiles(smi)
-            assert abs(m.similarity(m) - 1.0) < 1e-9, \
-                f"Self-similarity != 1 for {smi}"
+            assert abs(m.similarity(m) - 1.0) < 1e-9, f"Self-similarity != 1 for {smi}"
 
     def test_similarity_range_0_to_1(self):
         """0 ≤ sim(A, B) ≤ 1 for all molecule pairs."""
@@ -43,8 +51,7 @@ class TestSimilarityInvariants:
         for i, a in enumerate(mols):
             for j, b in enumerate(mols):
                 s = a.similarity(b)
-                assert 0.0 <= s <= 1.0, \
-                    f"Similarity out of range [{i},{j}]: {s}"
+                assert 0.0 <= s <= 1.0, f"Similarity out of range [{i},{j}]: {s}"
 
     def test_similarity_symmetric(self):
         """sim(A, B) == sim(B, A)."""
@@ -53,19 +60,20 @@ class TestSimilarityInvariants:
             for j in range(i + 1, len(mols)):
                 s_ij = mols[i].similarity(mols[j])
                 s_ji = mols[j].similarity(mols[i])
-                assert abs(s_ij - s_ji) < 1e-9, \
+                assert abs(s_ij - s_ji) < 1e-9, (
                     f"Similarity not symmetric at [{i},{j}]: {s_ij} vs {s_ji}"
+                )
 
     def test_similar_more_than_dissimilar(self):
         """Ethanol/ethylamine should be more similar to each other than to naphthalene."""
-        ethanol    = ro.parse_smiles("CCO")
+        ethanol = ro.parse_smiles("CCO")
         ethylamine = ro.parse_smiles("CCN")
         naphthalene = ro.parse_smiles("c1ccc2ccccc2c1")
         assert ethanol.similarity(ethylamine) > ethanol.similarity(naphthalene)
 
     def test_empty_mol_similarity_zero(self):
         empty = ro.RustMolecule()
-        real  = ro.parse_smiles("CCO")
+        real = ro.parse_smiles("CCO")
         assert empty.similarity(real) == 0.0
         assert real.similarity(empty) == 0.0
 
@@ -77,7 +85,6 @@ class TestSimilarityInvariants:
 
 
 class TestFingerprintInvariants:
-
     def test_fingerprint_length_always_2048(self):
         for smi in REFERENCE_SMILES + [""]:
             try:
@@ -121,8 +128,8 @@ class TestFingerprintInvariants:
 
 # ─── Canonical SMILES invariants ─────────────────────────────────────────────
 
-class TestCanonicalSmilesInvariants:
 
+class TestCanonicalSmilesInvariants:
     def test_idempotent_on_all_reference_mols(self):
         for smi in REFERENCE_SMILES:
             m1 = ro.parse_smiles(smi)
@@ -155,61 +162,57 @@ class TestCanonicalSmilesInvariants:
 
 # ─── Substructure invariants ─────────────────────────────────────────────────
 
-class TestSubstructureInvariants:
 
+class TestSubstructureInvariants:
     def test_every_molecule_contains_itself(self):
         for smi in REFERENCE_SMILES:
             m = ro.parse_smiles(smi)
-            assert m.has_substruct_match(m), \
-                f"Molecule does not contain itself: {smi}"
+            assert m.has_substruct_match(m), f"Molecule does not contain itself: {smi}"
 
     def test_every_molecule_contains_empty_query(self):
         query = ro.RustMolecule()
         for smi in REFERENCE_SMILES:
             m = ro.parse_smiles(smi)
-            assert m.has_substruct_match(query), \
-                f"Empty query not matched by {smi}"
+            assert m.has_substruct_match(query), f"Empty query not matched by {smi}"
 
     def test_empty_contains_empty(self):
         assert ro.RustMolecule().has_substruct_match(ro.RustMolecule()) is True
 
     def test_empty_does_not_contain_real_molecule(self):
         empty = ro.RustMolecule()
-        real  = ro.parse_smiles("CCO")
+        real = ro.parse_smiles("CCO")
         assert empty.has_substruct_match(real) is False
 
     def test_substructure_transitivity(self):
         """If A ⊆ B and B ⊆ C, then A ⊆ C."""
-        a = ro.parse_smiles("CO")       # methanol
-        b = ro.parse_smiles("CCO")      # ethanol
-        c = ro.parse_smiles("CCCO")     # propanol
+        a = ro.parse_smiles("CO")  # methanol
+        b = ro.parse_smiles("CCO")  # ethanol
+        c = ro.parse_smiles("CCCO")  # propanol
         assert b.has_substruct_match(a)
         assert c.has_substruct_match(b)
         assert c.has_substruct_match(a)
 
     def test_asymmetry_non_substructure(self):
         """If A ⊄ B it does not follow that B ⊄ A (both can be true)."""
-        big = ro.parse_smiles("c1ccccc1")   # benzene
-        small = ro.parse_smiles("CC")       # ethane
+        big = ro.parse_smiles("c1ccccc1")  # benzene
+        small = ro.parse_smiles("CC")  # ethane
         # ethane is NOT a substructure of benzene (no saturated C-C single in benzene)
         assert not big.has_substruct_match(small)
 
 
 # ─── Coordinate invariants ────────────────────────────────────────────────────
 
-class TestCoordinateInvariants:
 
+class TestCoordinateInvariants:
     def test_2d_coord_count_equals_atom_count(self):
         for smi in REFERENCE_SMILES:
             m = ro.generate_2d_coords(ro.parse_smiles(smi))
-            assert len(m.coords_2d) == m.num_atoms, \
-                f"2D coord count != atom count for {smi}"
+            assert len(m.coords_2d) == m.num_atoms, f"2D coord count != atom count for {smi}"
 
     def test_3d_coord_count_equals_atom_count(self):
         for smi in REFERENCE_SMILES:
             m = ro.generate_3d_coords(ro.parse_smiles(smi))
-            assert len(m.coords_3d) == m.num_atoms, \
-                f"3D coord count != atom count for {smi}"
+            assert len(m.coords_3d) == m.num_atoms, f"3D coord count != atom count for {smi}"
 
     def test_2d_coord_dimension_is_2(self):
         m = ro.generate_2d_coords(ro.parse_smiles("CCO"))
@@ -250,8 +253,7 @@ class TestCoordinateInvariants:
         for bond_idx in range(m.num_bonds):
             bond = m.get_bond(bond_idx)
             d = dist(c[bond.source_idx], c[bond.target_idx])
-            assert 0.5 <= d <= 4.0, \
-                f"Unreasonable bond length {d:.2f} Å for bond {bond_idx}"
+            assert 0.5 <= d <= 4.0, f"Unreasonable bond length {d:.2f} Å for bond {bond_idx}"
 
     def test_no_two_atoms_same_3d_position(self):
         """No two atoms should be at exactly the same 3D position."""
@@ -265,14 +267,13 @@ class TestCoordinateInvariants:
         for i in range(n):
             for j in range(i + 1, n):
                 d2 = dist_sq(c[i], c[j])
-                assert d2 > 1e-6, \
-                    f"Atoms {i} and {j} at same position: {c[i]}"
+                assert d2 > 1e-6, f"Atoms {i} and {j} at same position: {c[i]}"
 
 
 # ─── AMW ordering invariants ─────────────────────────────────────────────────
 
-class TestAmwOrdering:
 
+class TestAmwOrdering:
     def test_methane_lighter_than_ethane(self):
         assert ro.parse_smiles("C").amw < ro.parse_smiles("CC").amw
 
@@ -281,12 +282,9 @@ class TestAmwOrdering:
 
     def test_adding_heavy_atom_increases_amw(self):
         """Adding a bromine (heavy) should increase AMW more than adding C."""
-        base  = ro.parse_smiles("CC")          # ethane ~24 (heavy atoms only)
-        plus_c = ro.parse_smiles("CCC")        # + one C
-        plus_br = ro.parse_smiles("CCBr")      # + one Br
-        delta_c  = plus_c.amw  - base.amw
+        base = ro.parse_smiles("CC")  # ethane ~24 (heavy atoms only)
+        plus_c = ro.parse_smiles("CCC")  # + one C
+        plus_br = ro.parse_smiles("CCBr")  # + one Br
+        delta_c = plus_c.amw - base.amw
         delta_br = plus_br.amw - base.amw
         assert delta_br > delta_c  # Br (80) >> C (12)
-
-
-

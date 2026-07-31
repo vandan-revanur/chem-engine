@@ -73,14 +73,13 @@ import gzip
 import itertools
 import json
 import os
-import statistics
 import sys
-import time
 import threading
+import time
 import warnings
-from concurrent.futures import ProcessPoolExecutor, as_completed, Future
+from concurrent.futures import Future, ProcessPoolExecutor, as_completed
 from pathlib import Path
-from typing import Generator, Iterator
+from typing import Iterator
 
 # ── process priority ─────────────────────────────────────────────────────────
 try:
@@ -90,18 +89,21 @@ except OSError:
 
 # ── RDKit / chem-engine imports ───────────────────────────────────────────────
 from rdkit import RDLogger
+
 RDLogger.DisableLog("rdApp.*")
 warnings.filterwarnings("ignore")
 
 import psutil
-import chem_engine as ro
 from rdkit import Chem
-from rdkit.Chem import AllChem, Descriptors, rdMolDescriptors
+from rdkit.Chem import AllChem, rdMolDescriptors
 from rdkit.Chem.MolStandardize import rdMolStandardize
+
+import chem_engine as ro
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Memory watchdog
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 class MemoryWatchdog:
     """
@@ -109,11 +111,12 @@ class MemoryWatchdog:
     When memory exceeds `limit_pct`% of total RAM, sets `self.paused = True`.
     Callers should check `watchdog.wait_if_needed()` before submitting new work.
     """
+
     def __init__(self, limit_pct: float = 70.0, poll_interval: float = 2.0):
         self._limit = limit_pct / 100.0
-        self._poll  = poll_interval
+        self._poll = poll_interval
         self._total = psutil.virtual_memory().total
-        self._stop  = threading.Event()
+        self._stop = threading.Event()
         self.paused = False
         self._thread = threading.Thread(target=self._run, daemon=True)
         self._thread.start()
@@ -146,11 +149,14 @@ class MemoryWatchdog:
 # Module-level worker functions  (must be picklable)
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _worker_validate(chunk):
-    import chem_engine as ro
     from rdkit import Chem
-    return [s for s in chunk
-            if _try_ce(ro, s) and Chem.MolFromSmiles(s) is not None]
+
+    import chem_engine as ro
+
+    return [s for s in chunk if _try_ce(ro, s) and Chem.MolFromSmiles(s) is not None]
+
 
 def _try_ce(ro, s):
     try:
@@ -159,77 +165,105 @@ def _try_ce(ro, s):
     except Exception:
         return False
 
+
 def _worker_parse_ce(chunk):
     import chem_engine as ro
+
     return [ro.parse_smiles(s) for s in chunk]
+
 
 def _worker_parse_rk(chunk):
     from rdkit import Chem
+
     return [Chem.MolFromSmiles(s) for s in chunk]
+
 
 def _worker_canonical_ce(chunk):
     import chem_engine as ro
+
     return [ro.canonicalize(ro.parse_smiles(s)) for s in chunk]
+
 
 def _worker_canonical_rk(chunk):
     from rdkit import Chem
+
     return [Chem.MolToSmiles(Chem.MolFromSmiles(s)) for s in chunk]
+
 
 def _worker_amw_ce(chunk):
     import chem_engine as ro
+
     return [ro.parse_smiles(s).amw for s in chunk]
+
 
 def _worker_amw_rk(chunk):
     from rdkit import Chem, Descriptors
+
     return [Descriptors.MolWt(Chem.MolFromSmiles(s)) for s in chunk]
+
 
 def _worker_rotbonds_ce(chunk):
     import chem_engine as ro
+
     return [ro.parse_smiles(s).num_rotatable_bonds for s in chunk]
+
 
 def _worker_rotbonds_rk(chunk):
     from rdkit import Chem
-    from rdkit.Chem import rdMolDescriptors
+
     return [rdMolDescriptors.CalcNumRotatableBonds(Chem.MolFromSmiles(s)) for s in chunk]
+
 
 def _worker_substruct_ce(args):
     chunk, q_smi = args
     import chem_engine as ro
+
     q = ro.parse_smiles(q_smi)
     return [ro.parse_smiles(s).has_substruct_match(q) for s in chunk]
+
 
 def _worker_substruct_rk(args):
     chunk, q_smi = args
     from rdkit import Chem
+
     q = Chem.MolFromSmarts(q_smi)
     return [Chem.MolFromSmiles(s).HasSubstructMatch(q) for s in chunk]
 
+
 def _worker_tautomers_ce(chunk):
     import chem_engine as ro
+
     return [ro.parse_smiles(s).enumerate_tautomers() for s in chunk]
+
 
 def _worker_tautomers_rk(chunk):
     from rdkit import Chem
-    from rdkit.Chem.MolStandardize import rdMolStandardize
+
     e = rdMolStandardize.TautomerEnumerator()
     return [e.Enumerate(Chem.MolFromSmiles(s)) for s in chunk]
 
+
 def _worker_layout2d_ce(chunk):
     import chem_engine as ro
+
     return [ro.generate_2d_coords(ro.parse_smiles(s)) for s in chunk]
+
 
 def _worker_layout2d_rk(chunk):
     from rdkit import Chem
-    from rdkit.Chem import AllChem
+
     return [AllChem.Compute2DCoords(Chem.MolFromSmiles(s)) for s in chunk]
+
 
 def _worker_embed3d_ce(chunk):
     import chem_engine as ro
+
     return [ro.generate_3d_coords(ro.parse_smiles(s)) for s in chunk]
+
 
 def _worker_embed3d_rk(chunk):
     from rdkit import Chem
-    from rdkit.Chem import AllChem
+
     out = []
     for s in chunk:
         m = Chem.AddHs(Chem.MolFromSmiles(s))
@@ -241,10 +275,11 @@ def _worker_embed3d_rk(chunk):
 # SMILES streaming source
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _raw_smiles_stream(path: str, max_len: int) -> Iterator[str]:
     """Yield raw (unvalidated) SMILES strings from ChEMBL file, cycling infinitely."""
     opener = gzip.open if str(path).endswith(".gz") else open
-    while True:   # outer loop cycles the file for > 2.4 M requests
+    while True:  # outer loop cycles the file for > 2.4 M requests
         with opener(path, "rt") as fh:
             for i, line in enumerate(fh):
                 if i == 0:
@@ -271,11 +306,12 @@ def _detect_smiles_column(line: str) -> str | None:
     parts = line.split("\t") if "\t" in line else line.split()
     if not parts:
         return None
+
     # heuristic: SMILES columns contain C, c, N, O, (, [, = chars
     def looks_like_smiles(s: str) -> bool:
         return len(s) >= 2 and any(ch in s for ch in "CcNnOoSsPpFfBbIi([=#")
 
-    for col in [1, 0, 2]:   # ChEMBL/PubChem col1, then ZINC/plain col0
+    for col in [1, 0, 2]:  # ChEMBL/PubChem col1, then ZINC/plain col0
         if col < len(parts) and looks_like_smiles(parts[col]):
             return parts[col]
     return None
@@ -353,8 +389,11 @@ def build_validated_pool_multi(
                     break
             if read_total % 50_000 == 0:
                 pct = min(100, len(valid) / pool_size * 100)
-                print(f"[pool]   {pct:.0f}%  ({len(valid):,}/{pool_size:,},"
-                      f" read {read_total:,}) …", end="\r", flush=True)
+                print(
+                    f"[pool]   {pct:.0f}%  ({len(valid):,}/{pool_size:,}, read {read_total:,}) …",
+                    end="\r",
+                    flush=True,
+                )
 
         for f in as_completed(pending):
             for s in f.result():
@@ -366,13 +405,19 @@ def build_validated_pool_multi(
 
     valid = valid[:pool_size]
     unique_sources = len(paths)
-    print(f"\n[pool] Done - {len(valid):,} unique validated molecules "
-          f"from {unique_sources} source(s).", flush=True)
+    print(
+        f"\n[pool] Done - {len(valid):,} unique validated molecules "
+        f"from {unique_sources} source(s).",
+        flush=True,
+    )
 
     if len(valid) < pool_size:
         shortfall = pool_size - len(valid)
-        print(f"[pool] WARNING: pool is {shortfall:,} short of target {pool_size:,}. "
-              f"Cycling pool to compensate.", flush=True)
+        print(
+            f"[pool] WARNING: pool is {shortfall:,} short of target {pool_size:,}. "
+            f"Cycling pool to compensate.",
+            flush=True,
+        )
         if valid:
             extended = list(itertools.islice(itertools.cycle(valid), pool_size))
             valid = extended
@@ -381,16 +426,16 @@ def build_validated_pool_multi(
 
 
 # ── keep old single-source function as a thin wrapper ──────────────────────
-def build_validated_pool(path: str, max_len: int, pool_size: int,
-                          workers: int, chunk_size: int) -> list[str]:
-    return build_validated_pool_multi(
-        [path], max_len, pool_size, workers, chunk_size)
-
+def build_validated_pool(
+    path: str, max_len: int, pool_size: int, workers: int, chunk_size: int
+) -> list[str]:
+    return build_validated_pool_multi([path], max_len, pool_size, workers, chunk_size)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Streaming throughput measurement
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def streaming_throughput(
     ce_worker,
@@ -431,7 +476,7 @@ def streaming_throughput(
                 done_futs, remaining = [], []
                 for f in pending:
                     if f.done():
-                        f.result()   # propagate exceptions
+                        f.result()  # propagate exceptions
                         done_futs.append(f)
                     else:
                         remaining.append(f)
@@ -469,7 +514,7 @@ def streaming_throughput(
 
     # ── run chem-engine ──────────────────────────────────────────────────────
     ce_wall, ce_n = run_engine(ce_worker)
-    time.sleep(1.0)   # brief pause between engines
+    time.sleep(1.0)  # brief pause between engines
 
     # ── run RDKit ────────────────────────────────────────────────────────────
     rk_wall, rk_n = run_engine(rk_worker)
@@ -486,29 +531,33 @@ def streaming_throughput(
 # Formatting helpers
 # ═══════════════════════════════════════════════════════════════════════════════
 
+
 def _fmt(mps: float) -> str:
     if mps >= 1_000_000:
-        return f"{mps/1e6:.2f} M mol/s"
+        return f"{mps / 1e6:.2f} M mol/s"
     if mps >= 1_000:
-        return f"{mps/1e3:.1f} K mol/s"
+        return f"{mps / 1e3:.1f} K mol/s"
     return f"{mps:.0f} mol/s"
+
 
 def _ratio(ce: float, rk: float) -> str:
     r = rk / ce if ce > 0 else float("inf")
     sym = "✅" if r >= 1.0 else "❌"
     return f"{r:.1f}× {sym}"
 
+
 def _scale_tag(n: int) -> str:
     if n >= 1_000_000:
-        return f"{n//1_000_000}M"
+        return f"{n // 1_000_000}M"
     if n >= 1_000:
-        return f"{n//1_000}K"
+        return f"{n // 1_000}K"
     return str(n)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Checkpoint helpers
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def load_checkpoint(path: str) -> dict:
     if path and Path(path).exists():
@@ -520,6 +569,7 @@ def load_checkpoint(path: str) -> dict:
         except Exception as e:
             print(f"[checkpoint] Could not load {path}: {e}")
     return {}
+
 
 def save_checkpoint(path: str, results: dict):
     if not path:
@@ -533,6 +583,7 @@ def save_checkpoint(path: str, results: dict):
 # ═══════════════════════════════════════════════════════════════════════════════
 # Main benchmark
 # ═══════════════════════════════════════════════════════════════════════════════
+
 
 def run_extreme_benchmarks(
     smiles_pool: list[str],
@@ -550,12 +601,13 @@ def run_extreme_benchmarks(
     print("  EXTREME-SCALE BENCHMARK: chem-engine vs RDKit")
     print(f"  Pool size : {len(smiles_pool):,} validated molecules (cycled for larger N)")
     print(f"  Scales    : {[_scale_tag(s) for s in scales]}")
-    print(f"  Workers   : {workers}/{cpu_n}  |  chunk={chunk_size}  |  budget={time_budget}s  |  nice=+10")
+    print(
+        f"  Workers   : {workers}/{cpu_n}  |  chunk={chunk_size}  |  budget={time_budget}s  |  nice=+10"
+    )
     print("═" * 78)
 
     # ── helper: run one operation at all scales ────────────────────────────
-    def bench(label: str, ce_w, rk_w,
-              allowed_scales=None, extra_arg=None, note: str = ""):
+    def bench(label: str, ce_w, rk_w, allowed_scales=None, extra_arg=None, note: str = ""):
         scl = allowed_scales if allowed_scales is not None else scales
         print(f"\n### {label}", flush=True)
         if note:
@@ -565,7 +617,9 @@ def run_extreme_benchmarks(
             key = f"{label}@{_scale_tag(N)}"
             if key in results:
                 ce_r, rk_r = results[key]["ce_mps"], results[key]["rk_mps"]
-                print(f"  {_scale_tag(N):>6}  [cached] CE: {_fmt(ce_r):>20} | RK: {_fmt(rk_r):>20} | {_ratio(ce_r, rk_r)}")
+                print(
+                    f"  {_scale_tag(N):>6}  [cached] CE: {_fmt(ce_r):>20} | RK: {_fmt(rk_r):>20} | {_ratio(ce_r, rk_r)}"
+                )
                 continue
 
             if N > len(smiles_pool) and N > 10_000_000:
@@ -574,19 +628,26 @@ def run_extreme_benchmarks(
 
             print(f"  {_scale_tag(N):>6}  running …", end="\r", flush=True)
             (ce_mps, _), (rk_mps, _), n_done = streaming_throughput(
-                ce_w, rk_w, smiles_pool, N,
-                workers=workers, chunk_size=chunk_size,
-                watchdog=watchdog, time_budget=time_budget,
+                ce_w,
+                rk_w,
+                smiles_pool,
+                N,
+                workers=workers,
+                chunk_size=chunk_size,
+                watchdog=watchdog,
+                time_budget=time_budget,
                 extra_arg=extra_arg,
             )
 
             tag = "" if n_done >= N else f"  [budget hit @ {_scale_tag(n_done)}]"
-            print(f"  {_scale_tag(N):>6}  CE: {_fmt(ce_mps):>20} | RK: {_fmt(rk_mps):>20} | {_ratio(ce_mps, rk_mps)}{tag}")
+            print(
+                f"  {_scale_tag(N):>6}  CE: {_fmt(ce_mps):>20} | RK: {_fmt(rk_mps):>20} | {_ratio(ce_mps, rk_mps)}{tag}"
+            )
 
             results[key] = {"ce_mps": ce_mps, "rk_mps": rk_mps, "n_done": n_done}
             save_checkpoint(checkpoint_path, results)
 
-        time.sleep(2.0)   # inter-operation cooldown
+        time.sleep(2.0)  # inter-operation cooldown
 
     # ── 1. SMILES Parsing ─────────────────────────────────────────────────
     bench("1. SMILES Parsing", _worker_parse_ce, _worker_parse_rk)
@@ -601,8 +662,9 @@ def run_extreme_benchmarks(
     bench("4. Rotatable Bonds", _worker_rotbonds_ce, _worker_rotbonds_rk)
 
     # ── 5. Substructure Search ────────────────────────────────────────────
-    bench("5. Substructure Search", _worker_substruct_ce, _worker_substruct_rk,
-          extra_arg="c1ccccc1")
+    bench(
+        "5. Substructure Search", _worker_substruct_ce, _worker_substruct_rk, extra_arg="c1ccccc1"
+    )
 
     # ── 6. Parallel Batch Parse (chem-engine Rayon - in-process, no IPC) ──
     print("\n### 6. Parallel Batch Parse (chem-engine Rayon vs RDKit loop)", flush=True)
@@ -611,14 +673,15 @@ def run_extreme_benchmarks(
         key = f"6. Batch Parse@{_scale_tag(N)}"
         if key in results:
             ce_r, rk_r = results[key]["ce_mps"], results[key]["rk_mps"]
-            print(f"  {_scale_tag(N):>6}  [cached] CE: {_fmt(ce_r):>20} | RK: {_fmt(rk_r):>20} | {_ratio(ce_r, rk_r)}")
+            print(
+                f"  {_scale_tag(N):>6}  [cached] CE: {_fmt(ce_r):>20} | RK: {_fmt(rk_r):>20} | {_ratio(ce_r, rk_r)}"
+            )
             continue
 
         # Process in rolling windows of pool size to avoid RAM blow-up
-        window = smiles_pool   # use full pool each pass; cycle passes
+        window = smiles_pool  # use full pool each pass; cycle passes
         passes_needed = max(1, N // len(window))
         remainder = N - passes_needed * len(window)
-        actual_n = passes_needed * len(window) + remainder
 
         ce_times, rk_times = [], []
         t_budget_start = time.perf_counter()
@@ -652,7 +715,9 @@ def run_extreme_benchmarks(
         ce_mps = ce_total_n / ce_total_t
         rk_mps = rk_total_n / rk_total_t
 
-        print(f"  {_scale_tag(N):>6}  CE: {_fmt(ce_mps):>20} | RK: {_fmt(rk_mps):>20} | {_ratio(ce_mps, rk_mps)}")
+        print(
+            f"  {_scale_tag(N):>6}  CE: {_fmt(ce_mps):>20} | RK: {_fmt(rk_mps):>20} | {_ratio(ce_mps, rk_mps)}"
+        )
         results[key] = {"ce_mps": ce_mps, "rk_mps": rk_mps, "n_done": ce_total_n}
         save_checkpoint(checkpoint_path, results)
     time.sleep(2.0)
@@ -663,8 +728,9 @@ def run_extreme_benchmarks(
     key_sim = f"7. Tanimoto@{_scale_tag(SIM_N)}"
     if key_sim not in results:
         sim_ce = [ro.parse_smiles(s) for s in smiles_pool[:SIM_N]]
-        from rdkit.Chem import MorganGenerator
         from rdkit import DataStructs
+        from rdkit.Chem import MorganGenerator
+
         gen = MorganGenerator.GetMorganGenerator(radius=2, fpSize=2048)
         sim_rk = [gen.GetFingerprint(Chem.MolFromSmiles(s)) for s in smiles_pool[:SIM_N]]
         n_pairs = SIM_N * (SIM_N - 1) // 2
@@ -683,28 +749,44 @@ def run_extreme_benchmarks(
 
         ce_mps = n_pairs / ce_t
         rk_mps = n_pairs / rk_t
-        print(f"  {SIM_N:,}²/2 = {n_pairs:,} pairs | CE: {_fmt(ce_mps):>20} | RK: {_fmt(rk_mps):>20} | {_ratio(ce_mps, rk_mps)}")
+        print(
+            f"  {SIM_N:,}²/2 = {n_pairs:,} pairs | CE: {_fmt(ce_mps):>20} | RK: {_fmt(rk_mps):>20} | {_ratio(ce_mps, rk_mps)}"
+        )
         results[key_sim] = {"ce_mps": ce_mps, "rk_mps": rk_mps, "n_done": n_pairs}
         save_checkpoint(checkpoint_path, results)
     else:
         r = results[key_sim]
-        print(f"  [cached] CE: {_fmt(r['ce_mps']):>20} | RK: {_fmt(r['rk_mps']):>20} | {_ratio(r['ce_mps'], r['rk_mps'])}")
+        print(
+            f"  [cached] CE: {_fmt(r['ce_mps']):>20} | RK: {_fmt(r['rk_mps']):>20} | {_ratio(r['ce_mps'], r['rk_mps'])}"
+        )
     time.sleep(2.0)
 
     # ── 8. Tautomers (capped at 10K regardless of scale) ──────────────────
-    bench("8. Tautomers (10K cap)", _worker_tautomers_ce, _worker_tautomers_rk,
-          allowed_scales=[min(10_000, s) for s in [10_000]],
-          note="capped at 10K per scale to prevent multi-hour runs")
+    bench(
+        "8. Tautomers (10K cap)",
+        _worker_tautomers_ce,
+        _worker_tautomers_rk,
+        allowed_scales=[min(10_000, s) for s in [10_000]],
+        note="capped at 10K per scale to prevent multi-hour runs",
+    )
 
     # ── 9. 2D Layout (capped at 10K) ──────────────────────────────────────
-    bench("9. 2D Layout (10K cap)", _worker_layout2d_ce, _worker_layout2d_rk,
-          allowed_scales=[10_000],
-          note="capped at 10K")
+    bench(
+        "9. 2D Layout (10K cap)",
+        _worker_layout2d_ce,
+        _worker_layout2d_rk,
+        allowed_scales=[10_000],
+        note="capped at 10K",
+    )
 
     # ── 10. 3D Embedding (capped at 1K) ───────────────────────────────────
-    bench("10. 3D Embedding (1K cap)", _worker_embed3d_ce, _worker_embed3d_rk,
-          allowed_scales=[1_000],
-          note="capped at 1K - ETKDG is O(N³)")
+    bench(
+        "10. 3D Embedding (1K cap)",
+        _worker_embed3d_ce,
+        _worker_embed3d_rk,
+        allowed_scales=[1_000],
+        note="capped at 1K - ETKDG is O(N³)",
+    )
 
     # ── Summary ───────────────────────────────────────────────────────────
     print("\n" + "═" * 78)
@@ -723,9 +805,9 @@ def run_extreme_benchmarks(
     print("═" * 78)
 
     wins = sum(
-        1 for v in results.values()
-        if "ce_mps" in v and "rk_mps" in v
-        and v["ce_mps"] > 0 and v["rk_mps"] / v["ce_mps"] >= 1.0
+        1
+        for v in results.values()
+        if "ce_mps" in v and "rk_mps" in v and v["ce_mps"] > 0 and v["rk_mps"] / v["ce_mps"] >= 1.0
     )
     total = sum(1 for v in results.values() if "ce_mps" in v)
     print(f"\n  chem-engine faster in {wins}/{total} measured operations.\n")
@@ -739,45 +821,74 @@ def run_extreme_benchmarks(
 
 if __name__ == "__main__":
     cpu_n = os.cpu_count() or 2
-    default_workers = max(1, cpu_n // 3)   # conservative for extreme scale
+    default_workers = max(1, cpu_n // 3)  # conservative for extreme scale
 
     parser = argparse.ArgumentParser(
         description="Extreme-scale (100K-10M) chem-engine vs RDKit benchmark",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument("--sources", nargs="+", default=None,
-                        metavar="FILE",
-                        help=(
-                            "One or more SMILES source files (gzip or plain). "
-                            "Supports ChEMBL (TSV col 1), ZINC22 (space col 0), "
-                            "PubChem (TSV col 1), and plain one-per-line. "
-                            "Files are combined and deduplicated. "
-                            "Example: --sources chembl.txt.gz zinc_lead.smi.gz pubchem.tsv.gz"
-                        ))
-    parser.add_argument("--chembl", default=None,
-                        help="Shorthand for --sources with a single ChEMBL file "
-                             "(kept for backward compatibility).")
+    parser.add_argument(
+        "--sources",
+        nargs="+",
+        default=None,
+        metavar="FILE",
+        help=(
+            "One or more SMILES source files (gzip or plain). "
+            "Supports ChEMBL (TSV col 1), ZINC22 (space col 0), "
+            "PubChem (TSV col 1), and plain one-per-line. "
+            "Files are combined and deduplicated. "
+            "Example: --sources chembl.txt.gz zinc_lead.smi.gz pubchem.tsv.gz"
+        ),
+    )
+    parser.add_argument(
+        "--chembl",
+        default=None,
+        help="Shorthand for --sources with a single ChEMBL file (kept for backward compatibility).",
+    )
     parser.add_argument("--max-smiles-len", type=int, default=150)
-    parser.add_argument("--pool-size", type=int, default=200_000,
-                        help="Validated molecule pool to build; cycled for larger N")
-    parser.add_argument("--workers", type=int, default=default_workers,
-                        help=f"ProcessPoolExecutor workers (default: {default_workers} = cpu//3)")
-    parser.add_argument("--chunk-size", type=int, default=1_000,
-                        help="Molecules per worker chunk (larger = less IPC overhead)")
-    parser.add_argument("--time-budget", type=float, default=600.0,
-                        help="Max seconds per (operation × scale) pair")
-    parser.add_argument("--mem-limit-pct", type=float, default=70.0,
-                        help="Pause new work when process RAM exceeds this %% of total")
-    parser.add_argument("--scales", default="100000,1000000,10000000",
-                        help="Comma-separated molecule counts to benchmark")
-    parser.add_argument("--checkpoint", default="/tmp/chem_extreme_checkpoint.json",
-                        help="JSON file for checkpoint/resume")
+    parser.add_argument(
+        "--pool-size",
+        type=int,
+        default=200_000,
+        help="Validated molecule pool to build; cycled for larger N",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=default_workers,
+        help=f"ProcessPoolExecutor workers (default: {default_workers} = cpu//3)",
+    )
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=1_000,
+        help="Molecules per worker chunk (larger = less IPC overhead)",
+    )
+    parser.add_argument(
+        "--time-budget", type=float, default=600.0, help="Max seconds per (operation × scale) pair"
+    )
+    parser.add_argument(
+        "--mem-limit-pct",
+        type=float,
+        default=70.0,
+        help="Pause new work when process RAM exceeds this %% of total",
+    )
+    parser.add_argument(
+        "--scales",
+        default="100000,1000000,10000000",
+        help="Comma-separated molecule counts to benchmark",
+    )
+    parser.add_argument(
+        "--checkpoint",
+        default="/tmp/chem_extreme_checkpoint.json",
+        help="JSON file for checkpoint/resume",
+    )
     args = parser.parse_args()
 
     scales = sorted(set(int(x) for x in args.scales.split(",")))
-    args.workers = max(1, min(args.workers, cpu_n - 2))   # always leave ≥ 2 cores free
+    args.workers = max(1, min(args.workers, cpu_n - 2))  # always leave ≥ 2 cores free
 
-    print(f"\n[config]")
+    print("\n[config]")
     print(f"  workers      = {args.workers}/{cpu_n}")
     print(f"  pool_size    = {args.pool_size:,}")
     print(f"  chunk_size   = {args.chunk_size:,}")
@@ -785,14 +896,16 @@ if __name__ == "__main__":
     print(f"  mem_limit    = {args.mem_limit_pct}% of RAM")
     print(f"  scales       = {[_scale_tag(s) for s in scales]}")
     print(f"  checkpoint   = {args.checkpoint}")
-    print(f"  nice         = +10")
+    print("  nice         = +10")
 
     # ── start memory watchdog ─────────────────────────────────────────────
     watchdog = MemoryWatchdog(limit_pct=args.mem_limit_pct)
     vm = psutil.virtual_memory()
-    print(f"\n[memory] Total: {vm.total/1e9:.1f} GB  "
-          f"Available: {vm.available/1e9:.1f} GB  "
-          f"Limit: {args.mem_limit_pct}% = {vm.total * args.mem_limit_pct/100/1e9:.1f} GB")
+    print(
+        f"\n[memory] Total: {vm.total / 1e9:.1f} GB  "
+        f"Available: {vm.available / 1e9:.1f} GB  "
+        f"Limit: {args.mem_limit_pct}% = {vm.total * args.mem_limit_pct / 100 / 1e9:.1f} GB"
+    )
 
     # ── build validated SMILES pool ───────────────────────────────────────
     sources = args.sources if args.sources else ([args.chembl] if args.chembl else [])
@@ -802,8 +915,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     pool = build_validated_pool_multi(
-        sources, args.max_smiles_len,
-        args.pool_size, args.workers, args.chunk_size,
+        sources,
+        args.max_smiles_len,
+        args.pool_size,
+        args.workers,
+        args.chunk_size,
     )
 
     if len(pool) < 10_000:
@@ -811,13 +927,16 @@ if __name__ == "__main__":
         watchdog.stop()
         sys.exit(1)
 
-    print(f"[info] Pool of {len(pool):,} molecules will be cycled "
-          f"{max(scales) // len(pool) + 1}× to reach "
-          f"{_scale_tag(max(scales))} scale.\n")
+    print(
+        f"[info] Pool of {len(pool):,} molecules will be cycled "
+        f"{max(scales) // len(pool) + 1}× to reach "
+        f"{_scale_tag(max(scales))} scale.\n"
+    )
 
     try:
         run_extreme_benchmarks(
-            pool, scales,
+            pool,
+            scales,
             workers=args.workers,
             chunk_size=args.chunk_size,
             time_budget=args.time_budget,
@@ -826,8 +945,3 @@ if __name__ == "__main__":
         )
     finally:
         watchdog.stop()
-
-
-
-
-

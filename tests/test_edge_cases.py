@@ -16,14 +16,15 @@ Covers:
   • Isotope labels
   • Molecules with all atom types
 """
-import pytest
-import chem_engine as ro
 
+import pytest
+
+import chem_engine as ro
 
 # ─── Empty and minimal molecules ────────────────────────────────────────────
 
-class TestEmptyAndMinimal:
 
+class TestEmptyAndMinimal:
     def test_empty_molecule_num_atoms_zero(self):
         m = ro.RustMolecule()
         assert m.num_atoms == 0
@@ -58,7 +59,7 @@ class TestEmptyAndMinimal:
     def test_empty_molecule_substruct_empty_query(self):
         """Empty molecule contains empty query."""
         target = ro.RustMolecule()
-        query  = ro.RustMolecule()
+        query = ro.RustMolecule()
         assert target.has_substruct_match(query) is True
 
     def test_single_atom_carbon(self):
@@ -88,8 +89,8 @@ class TestEmptyAndMinimal:
 
 # ─── Charged atoms ──────────────────────────────────────────────────────────
 
-class TestChargedAtoms:
 
+class TestChargedAtoms:
     def test_ammonium_positive_charge(self):
         m = ro.parse_smiles("[NH4+]")
         a = m.get_atom(0)
@@ -131,8 +132,8 @@ class TestChargedAtoms:
 
 # ─── Explicit hydrogen bracket atoms ────────────────────────────────────────
 
-class TestExplicitHydrogens:
 
+class TestExplicitHydrogens:
     def test_explicit_h_count_ammonium(self):
         m = ro.parse_smiles("[NH4+]")
         a = m.get_atom(0)
@@ -146,8 +147,7 @@ class TestExplicitHydrogens:
 
     def test_bracket_nh2(self):
         m = ro.parse_smiles("[NH2]c1ccccc1")  # aniline bracket form
-        n_atom = next(m.get_atom(i) for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 7)
+        n_atom = next(m.get_atom(i) for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 7)
         assert n_atom.num_explicit_hs == 2
 
     def test_h_atom_atomic_number_1(self):
@@ -158,8 +158,8 @@ class TestExplicitHydrogens:
 
 # ─── Halogens ────────────────────────────────────────────────────────────────
 
-class TestHalogens:
 
+class TestHalogens:
     def test_fluoromethane(self):
         m = ro.parse_smiles("CF")
         symbols = {m.get_atom(i).symbol for i in range(m.num_atoms)}
@@ -168,33 +168,29 @@ class TestHalogens:
 
     def test_chloromethane_atomic_number(self):
         m = ro.parse_smiles("CCl")
-        cl_atoms = [m.get_atom(i) for i in range(m.num_atoms)
-                    if m.get_atom(i).atomic_number == 17]
+        cl_atoms = [m.get_atom(i) for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 17]
         assert len(cl_atoms) == 1
 
     def test_bromomethane_atomic_number(self):
         m = ro.parse_smiles("CBr")
-        br_atoms = [m.get_atom(i) for i in range(m.num_atoms)
-                    if m.get_atom(i).atomic_number == 35]
+        br_atoms = [m.get_atom(i) for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 35]
         assert len(br_atoms) == 1
 
     def test_iodomethane(self):
         m = ro.parse_smiles("CI")
-        i_atoms = [m.get_atom(i) for i in range(m.num_atoms)
-                   if m.get_atom(i).atomic_number == 53]
+        i_atoms = [m.get_atom(i) for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 53]
         assert len(i_atoms) == 1
 
     def test_perfluorobenzene_6_fluorines(self):
         m = ro.parse_smiles("Fc1c(F)c(F)c(F)c(F)c1F")
-        f_count = sum(1 for i in range(m.num_atoms)
-                      if m.get_atom(i).atomic_number == 9)
+        f_count = sum(1 for i in range(m.num_atoms) if m.get_atom(i).atomic_number == 9)
         assert f_count == 6
 
 
 # ─── Ring closure edge cases ─────────────────────────────────────────────────
 
-class TestRingClosures:
 
+class TestRingClosures:
     def test_3_membered_ring(self):
         """Cyclopropane C1CC1 - 3 atoms, 3 bonds."""
         m = ro.parse_smiles("C1CC1")
@@ -221,7 +217,7 @@ class TestRingClosures:
     def test_bicyclic_decalin(self):
         """Decalin C1CCCCC2CCCCC12 - 11 atoms, 12 bonds (chem-engine's ring-closure count)."""
         m = ro.parse_smiles("C1CCCCC2CCCCC12")
-        assert m.num_atoms == 11   # includes shared ring-junction atom
+        assert m.num_atoms == 11  # includes shared ring-junction atom
         assert m.num_bonds == 12
 
     def test_spiro_compound(self):
@@ -233,8 +229,8 @@ class TestRingClosures:
 
 # ─── Long-chain stress ───────────────────────────────────────────────────────
 
-class TestLongChains:
 
+class TestLongChains:
     def test_c20_chain_atom_count(self):
         smi = "C" * 20
         m = ro.parse_smiles(smi)
@@ -246,7 +242,10 @@ class TestLongChains:
         assert m.num_bonds == 19
 
     def test_c20_rotatable_bonds_count(self):
-        """C20 linear chain: 17 rotatable bonds (C1-C2 through C17-C18; both terminal C-C are excluded)."""
+        """C20 linear chain: 17 rotatable bonds.
+
+        C1-C2 through C17-C18; both terminal C-C bonds are excluded.
+        """
         smi = "C" * 20
         m = ro.parse_smiles(smi)
         assert m.num_rotatable_bonds == 17
@@ -260,8 +259,8 @@ class TestLongChains:
 
 # ─── Out-of-bounds index access ──────────────────────────────────────────────
 
-class TestOutOfBoundsAccess:
 
+class TestOutOfBoundsAccess:
     def test_get_atom_out_of_range_returns_none(self):
         m = ro.parse_smiles("CCO")
         result = m.get_atom(100)
@@ -289,8 +288,8 @@ class TestOutOfBoundsAccess:
 
 # ─── Invalid SMILES ──────────────────────────────────────────────────────────
 
-class TestInvalidSmiles:
 
+class TestInvalidSmiles:
     def test_completely_invalid(self):
         with pytest.raises(Exception):
             ro.parse_smiles("XYZ_INVALID_SMILES_999")
@@ -322,8 +321,8 @@ class TestInvalidSmiles:
 
 # ─── Coordinate setter edge cases ────────────────────────────────────────────
 
-class TestCoordinateSetters:
 
+class TestCoordinateSetters:
     def test_set_2d_coords_correct_count(self):
         m = ro.parse_smiles("CCO")
         m.coords_2d = [[0.0, 0.0], [1.5, 0.0], [3.0, 0.0]]
@@ -371,8 +370,8 @@ class TestCoordinateSetters:
 
 # ─── Batch parse edge cases ──────────────────────────────────────────────────
 
-class TestBatchEdgeCases:
 
+class TestBatchEdgeCases:
     def test_batch_empty_list(self):
         assert ro.batch_parse_smiles([]) == []
 
@@ -386,8 +385,7 @@ class TestBatchEdgeCases:
         results = ro.batch_parse_smiles(smiles)
         assert len(results) == 5
         for i, r in enumerate(results):
-            assert r.num_atoms == i + 1, \
-                f"Position {i}: expected {i+1} atoms, got {r.num_atoms}"
+            assert r.num_atoms == i + 1, f"Position {i}: expected {i + 1} atoms, got {r.num_atoms}"
 
     def test_batch_diverse_elements(self):
         smiles = ["CCO", "CCN", "CCS", "CF", "CCl", "CBr", "CI"]
@@ -395,8 +393,9 @@ class TestBatchEdgeCases:
         results = ro.batch_parse_smiles(smiles)
         assert len(results) == 7
         for i, (r, exp) in enumerate(zip(results, expected_atoms)):
-            assert r.num_atoms == exp, \
+            assert r.num_atoms == exp, (
                 f"Position {i} ({smiles[i]}): expected {exp} atoms, got {r.num_atoms}"
+            )
 
     def test_batch_100_identical(self):
         results = ro.batch_parse_smiles(["c1ccccc1"] * 100)
@@ -407,13 +406,3 @@ class TestBatchEdgeCases:
         smiles_pool = ["CCO", "CCCC", "c1ccccc1", "CN", "CC(=O)O"] * 200
         results = ro.batch_parse_smiles(smiles_pool)
         assert len(results) == 1000
-
-
-
-
-
-
-
-
-
-

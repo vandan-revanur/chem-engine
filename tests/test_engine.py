@@ -10,14 +10,16 @@ So:
   get_coords_2d  -> coords_2d
   get_coords_3d  -> coords_3d
 """
-import pytest
-import chem_engine as ro
-from chem_engine.utils import to_rdkit, from_rdkit
 
+import pytest
+
+import chem_engine as ro
+from chem_engine.utils import from_rdkit, to_rdkit
 
 # ---------------------------------------------------------------------------
 # FR-1 & FR-2: Molecular graph + SMILES parsing
 # ---------------------------------------------------------------------------
+
 
 class TestSmilesParsing:
     """FR-1 (Molecular Graph) + FR-2 (SMILES → 2D Pipeline)"""
@@ -115,6 +117,7 @@ class TestSmilesParsing:
 # FR-5: Canonical SMILES
 # ---------------------------------------------------------------------------
 
+
 class TestCanonicalSmiles:
     """FR-5: 2D representation → canonical SMILES"""
 
@@ -153,6 +156,7 @@ class TestCanonicalSmiles:
 # ---------------------------------------------------------------------------
 # FR-6: 2D and 3D coordinate generation
 # ---------------------------------------------------------------------------
+
 
 class TestLayout:
     """FR-6: ETKDG-like 2D/3D coordinate generation"""
@@ -198,6 +202,7 @@ class TestLayout:
 # FR-8: Descriptor calculations (AMW + RotBonds)
 # ---------------------------------------------------------------------------
 
+
 class TestDescriptors:
     """FR-8: AMW and rotatable bonds"""
 
@@ -236,6 +241,7 @@ class TestDescriptors:
 # FR-4: Parallel batch engine
 # ---------------------------------------------------------------------------
 
+
 class TestBatchProcessing:
     """FR-4: Rayon-backed parallel SMILES parsing"""
 
@@ -247,8 +253,8 @@ class TestBatchProcessing:
     def test_batch_parse_atom_counts(self):
         smiles_list = ["CCO", "CCCC"]
         results = ro.batch_parse_smiles(smiles_list)
-        assert results[0].num_atoms == 3   # CCO
-        assert results[1].num_atoms == 4   # CCCC
+        assert results[0].num_atoms == 3  # CCO
+        assert results[1].num_atoms == 4  # CCCC
 
     def test_batch_parse_empty_list(self):
         results = ro.batch_parse_smiles([])
@@ -265,6 +271,7 @@ class TestBatchProcessing:
 # ---------------------------------------------------------------------------
 # FR-9: Substructure search
 # ---------------------------------------------------------------------------
+
 
 class TestSubstructureSearch:
     """FR-9: Subgraph isomorphism"""
@@ -308,6 +315,7 @@ class TestSubstructureSearch:
 # ---------------------------------------------------------------------------
 # FR-10: Chemical fingerprints + Tanimoto similarity
 # ---------------------------------------------------------------------------
+
 
 class TestSimilaritySearch:
     """FR-10: Fingerprint generation and Tanimoto coefficient"""
@@ -359,6 +367,7 @@ class TestSimilaritySearch:
 # FR-7: Tautomer enumeration and standardization
 # ---------------------------------------------------------------------------
 
+
 class TestTautomers:
     """FR-7: Tautomer enumeration and canonical tautomer selection"""
 
@@ -406,6 +415,7 @@ class TestTautomers:
 # ---------------------------------------------------------------------------
 # FR-3 / FR-11: RDKit type interoperability
 # ---------------------------------------------------------------------------
+
 
 class TestRDKitInterop:
     """FR-3 / FR-11: Two-way conversion with rdkit.Chem.Mol"""
@@ -480,6 +490,7 @@ class TestRDKitInterop:
 # ---------------------------------------------------------------------------
 # Manual atom/bond API (FR-1)
 # ---------------------------------------------------------------------------
+
 
 class TestManualMoleculeConstruction:
     """FR-1: Direct Atom/Bond API"""

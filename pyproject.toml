@@ -51,6 +51,13 @@ ignore = [
     "S101",   # allow assert in tests
 ]
 
+[tool.ruff.lint.per-file-ignores]
+# Benchmarks: intentional import ordering (RDKit warning suppression before
+# remaining rdkit imports) + long formatted output lines are acceptable.
+"benchmarks/**" = ["E402", "E501"]
+# RDKit cross-validation: chem_engine must import after the try/except rdkit guard.
+"tests/test_correctness_vs_rdkit.py" = ["E402"]
+
 # ── mypy ──────────────────────────────────────────────────────────────────────
 [tool.mypy]
 python_version        = "3.11"

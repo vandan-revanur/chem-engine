@@ -59,32 +59,32 @@ maturin develop --release
 import chem_engine as ce
 
 # Parse SMILES
-mol = ce.parse_smiles("CC(=O)Oc1ccccc1C(=O)O")   # aspirin
-print(mol.num_atoms)              # 13
-print(mol.num_bonds)              # 13
-print(mol.amw)                    # ~180 (heavy atoms only)
-print(mol.num_rotatable_bonds)    # 3
+mol = ce.parse_smiles("CC(=O)Oc1ccccc1C(=O)O")  # aspirin
+print(mol.num_atoms)  # 13
+print(mol.num_bonds)  # 13
+print(mol.amw)  # ~180 (heavy atoms only)
+print(mol.num_rotatable_bonds)  # 3
 
 # Canonical SMILES
 can = ce.canonicalize(mol)
-print(can)   # deterministic string
+print(can)  # deterministic string
 
 # 2D layout
 mol2d = ce.generate_2d_coords(mol)
-print(mol2d.coords_2d)   # [[x, y], ...]
+print(mol2d.coords_2d)  # [[x, y], ...]
 
 # 3D embedding
 mol3d = ce.generate_3d_coords(mol)
-print(mol3d.coords_3d)   # [[x, y, z], ...]
+print(mol3d.coords_3d)  # [[x, y, z], ...]
 
 # Fingerprint and similarity
-fp = mol.get_fingerprint()          # 2048-bit ECFP2
-sim = mol.similarity(mol)           # 1.0
+fp = mol.get_fingerprint()  # 2048-bit ECFP2
+sim = mol.similarity(mol)  # 1.0
 print(sim)
 
 # Substructure search
 benzene = ce.parse_smiles("c1ccccc1")
-print(mol.has_substruct_match(benzene))   # True
+print(mol.has_substruct_match(benzene))  # True
 
 # Tautomers
 acetone = ce.parse_smiles("CC(=O)C")
@@ -106,16 +106,16 @@ from rdkit import Chem
 # chem-engine -> RDKit
 rust_mol = ce.parse_smiles("c1ccccc1")
 rd_mol = to_rdkit(rust_mol)
-print(Chem.MolToSmiles(rd_mol))   # RDKit canonical SMILES
+print(Chem.MolToSmiles(rd_mol))  # RDKit canonical SMILES
 
 # RDKit -> chem-engine
 rd_mol = Chem.MolFromSmiles("CC(=O)O")
 rust_mol = from_rdkit(rd_mol)
-print(rust_mol.num_atoms)         # 4
+print(rust_mol.num_atoms)  # 4
 
 # Typical pattern: fast Rust pipeline, RDKit for accuracy-critical steps
 rust_mol = ce.generate_3d_coords(ce.parse_smiles(smiles))
-rd_mol = to_rdkit(rust_mol)       # hand off to RDKit
+rd_mol = to_rdkit(rust_mol)  # hand off to RDKit
 ```
 
 ---
